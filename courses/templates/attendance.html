@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Attendance — {{ course.title }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:820px; margin-top:40px;">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-1">🧾 Attendance — {{ course.title }}</h4>
+      <p class="text-muted mb-0">
+        {% if timing.date %}
+          {{ timing.date|date:"D, d M Y" }}
+        {% else %}
+          {{ timing.get_day_of_week_display }}
+        {% endif %}
+        | {{ timing.start_time|time:"H:i" }} – {{ timing.end_time|time:"H:i" }}
+      </p>
+    </div>
+    <a href="{% url 'class_timings' course.id %}" class="btn btn-outline-secondary rounded-pill px-3">← Back to Schedule</a>
+  </div>
+
+  <div style="background:white; border-radius:18px; padding:28px; box-shadow:0 4px 15px rgba(0,0,0,.06);">
+    <form method="post">
+      {% csrf_token %}
+      <div class="mb-4">
+        <h6 class="fw-semibold mb-2">Mark attendees</h6>
+        <p class="text-muted mb-3" style="font-size:13px;">Enter the percentage of the live class each student attended. Students at or above {{ attendance_threshold }}% will be marked present.</p>
+        {% if students %}
+          <div class="list-group">
+            {% for student in students %}
+            <label class="list-group-item d-flex align-items-center justify-content-between gap-3" style="cursor:pointer;">
+              <span>
+                <strong>{{ student.get_full_name }}</strong>
+                <div style="font-size:12px; color:#666;">{{ student.email }}</div>
+              </span>
+              <div class="d-flex align-items-center gap-2">
+                <input class="form-control form-control-sm" type="number"
+                       name="attendance_{{ student.id }}" min="0" max="100"
+                       value="{{ attendance_percent_map|get_item:student.id|default:0 }}"
+                       style="width:90px;" />
+                <span style="font-size:12px; color:#555;">%</span>
+              </div>
+            </label>
+            {% endfor %}
+          </div>
+        {% else %}
+          <div class="text-center py-4 text-muted" style="font-size:14px;">
+            No paid students are enrolled in this course yet.
+          </div>
+        {% endif %}
+      </div>
+
+      <button type="submit" class="btn btn-primary rounded-pill px-4">
+        <i class="fas fa-save me-2"></i>Save Attendance
+      </button>
+    </form>
+
+    <div class="mt-4" style="font-size:14px; color:#555;">
+      <strong>{{ attended_count }}</strong> of <strong>{{ students|length }}</strong> students marked present.
+    </div>
+  </div>
+</div>
+{% endblock %}

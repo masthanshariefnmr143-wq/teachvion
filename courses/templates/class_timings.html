@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Class Timings — {{ course.title }}{% endblock %}
+{% block content %}
+<div class="container" style="max-width:800px; margin-top:40px;">
+  <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+      <h4 class="fw-bold mb-1">🗓️ Class Timings</h4>
+      <p class="text-muted mb-0">{{ course.title }}</p>
+    </div>
+    <a href="{% url 'trainer_dashboard' %}" class="btn btn-outline-secondary rounded-pill px-3">← Dashboard</a>
+  </div>
+  <div class="row g-4">
+    <div class="col-md-5">
+      <div style="background:white; border-radius:16px; padding:28px; box-shadow:0 4px 15px rgba(0,0,0,.06);">
+        <h6 class="fw-bold mb-4">Add New Timing</h6>
+        <form method="post">
+          {% csrf_token %}
+          {% for field in form %}
+          <div class="mb-3">
+            <label class="form-label fw-semibold" style="font-size:13px;">{{ field.label }}</label>
+            {{ field }}
+            {% if field.errors %}<div class="text-danger" style="font-size:12px;">{{ field.errors.0 }}</div>{% endif %}
+          </div>
+          {% endfor %}
+          <button type="submit" class="btn w-100 rounded-pill fw-bold" style="background:linear-gradient(135deg,#5a67d8,#7b4bb7);color:white;">
+            <i class="fas fa-plus me-1"></i>Add Timing
+          </button>
+        </form>
+      </div>
+    </div>
+    <div class="col-md-7">
+      <div style="background:white; border-radius:16px; padding:28px; box-shadow:0 4px 15px rgba(0,0,0,.06);">
+        <h6 class="fw-bold mb-4">Current Schedule ({{ timings|length }})</h6>
+        {% if timings %}
+          {% for t in timings %}
+          <div style="background:#f0f4ff; border-radius:12px; padding:14px 18px; margin-bottom:10px; border-left:4px solid #5a67d8;">
+            <div class="fw-bold" style="font-size:15px;">{{ t.display_date }}</div>
+            <div style="font-size:14px; color:#555; margin:4px 0;">
+              <i class="fas fa-clock me-1 text-primary"></i>{{ t.start_time|time:"H:i" }} – {{ t.end_time|time:"H:i" }}
+            </div>
+            {% if t.meeting_link %}
+            <a href="{{ t.meeting_link }}" target="_blank" style="font-size:13px; color:#5a67d8;">
+              <i class="fas fa-video me-1"></i>Join Meeting
+            </a>
+            {% endif %}
+            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
+              <a href="{% url 'class_attendance' course.id t.id %}" class="btn btn-sm btn-outline-success rounded-pill" style="font-size:12px;">
+                <i class="fas fa-user-check me-1"></i>Mark Attendance
+              </a>
+              <span style="font-size:12px;color:#166534;">
+                Present: <strong>{{ t.attendance_present_count }}</strong>
+              </span>
+            </div>
+            {% if t.notes %}<div style="font-size:12px; color:#888; margin-top:4px;">{{ t.notes }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        {% else %}
+          <div class="text-center text-muted py-4">
+            <i class="fas fa-calendar-xmark fa-2x mb-2"></i><br>No timings added yet.
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

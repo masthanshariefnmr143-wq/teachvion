@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Certificate — {{ cert.certificate_number }} — Teachvion{% endblock %}
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+<div class="cert-page">
+
+  <!-- Actions bar -->
+  <div class="cert-actions">
+    <div>
+      <h5>🏆 Your Certificate</h5>
+      <div style="font-size:13px; color:#888; margin-top:2px;">
+        {{ cert.course.title }} &nbsp;·&nbsp;
+        Issued {{ cert.issued_at|date:"d F Y" }}
+      </div>
+    </div>
+    <div class="d-flex gap-2 flex-wrap">
+      <a href="{% url 'certificate_pdf' cert.id %}"
+         class="btn btn-danger rounded-pill px-3" style="font-size:13px;">
+        <i class="fas fa-file-pdf me-1"></i>Download PDF
+      </a>
+      <a href="{% url 'certificate_delivery' cert.id %}"
+         class="btn btn-outline-primary rounded-pill px-3" style="font-size:13px;">
+        <i class="fas fa-truck me-1"></i>Delivery Options
+      </a>
+      <a href="{% url 'certificate' %}"
+         class="btn btn-outline-secondary rounded-pill px-3" style="font-size:13px;">
+        <i class="fas fa-arrow-left me-1"></i>All Certificates
+      </a>
+    </div>
+  </div>
+
+  <!-- Certificate Card -->
+  <div class="cert-wrapper">
+    <div class="certificate">
+
+      <!-- Corner decorations -->
+      <div class="cert-corner tl"></div>
+      <div class="cert-corner tr"></div>
+      <div class="cert-corner bl"></div>
+      <div class="cert-corner br"></div>
+
+      <!-- Logo -->
+      <div class="cert-logo">🎓 Teachvion</div>
+      <div class="cert-subtitle">Certificate of Completion</div>
+
+      <!-- Body text -->
+      <div class="cert-body-text">This is to certify that</div>
+      <div class="cert-name">{{ cert.student.get_full_name }}</div>
+      <div class="cert-body-text">has successfully completed the course</div>
+      <div class="cert-course">{{ cert.course.title }}</div>
+
+      {% if cert.exam_attempt %}
+        <div class="score-ribbon">
+          Score: {{ cert.exam_attempt.percentage|floatformat:1 }}%
+          &nbsp;·&nbsp;
+          {% if cert.exam_attempt.percentage >= 70 %}🥇 Distinction
+          {% elif cert.exam_attempt.percentage >= 60 %}🥈 Merit
+          {% else %}✅ Pass
+          {% endif %}
+        </div>
+      {% endif %}
+
+      <hr class="cert-divider">
+
+      <!-- Footer: signatures + seal -->
+      <div class="cert-footer">
+        <!-- Left signature -->
+        <div class="cert-sig">
+          <div class="sig-line"></div>
+          <div class="sig-name">Teachvion Team</div>
+          <div class="sig-role">Director of Education</div>
+        </div>
+
+        <!-- Center seal -->
+        <div class="text-center">
+          <div class="cert-seal">🏆</div>
+          <div class="cert-number">{{ cert.certificate_number }}</div>
+          <div class="cert-date">{{ cert.issued_at|date:"d F Y" }}</div>
+        </div>
+
+        <!-- Right signature -->
+        <div class="cert-sig">
+          <div class="sig-line"></div>
+          <div class="sig-name">
+            {{ cert.course.trainer.get_full_name|default:"Teachvion Instructor" }}
+          </div>
+          <div class="sig-role">Course Instructor</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Share / More actions section -->
+  <div class="share-section">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <h6 class="fw-bold mb-1">Share your achievement 🎉</h6>
+        <p class="text-muted mb-0" style="font-size:13px;">
+          Certificate No: <code style="color:#5a67d8;">{{ cert.certificate_number }}</code>
+        </p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        {% if cert.exam_attempt and cert.exam_attempt.eligible_for_partner %}
+        <a href="{% url 'partner_companies' cert.course.id %}"
+           class="btn btn-success rounded-pill px-3" style="font-size:13px;">
+          <i class="fas fa-handshake me-1"></i>View Partner Companies
+        </a>
+        {% endif %}
+        <a href="{% url 'student_dashboard' %}"
+           class="btn btn-outline-secondary rounded-pill px-3" style="font-size:13px;">
+          <i class="fas fa-th-large me-1"></i>Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

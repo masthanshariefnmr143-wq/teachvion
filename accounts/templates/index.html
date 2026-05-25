@@ -1,0 +1,491 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Teachvion — Learn Without Limits{% endblock %}
+
+{% block extra_style %}
+
+
+{% endblock %}
+
+
+{% block content %}
+
+<!-- ══════════ HERO ══════════ -->
+<section class="hero">
+  <div class="container">
+    <div style="font-size:12px;font-weight:700;letter-spacing:2px;opacity:.7;text-transform:uppercase;margin-bottom:10px;">
+      🎓 Teachvion — E-Learning Platform
+    </div>
+    <h1>Learn Without Limits</h1>
+    <p>Master in-demand skills with world-class courses from expert instructors</p>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="What do you want to learn?">
+      <button id="searchBtn"><i class="fas fa-search me-1"></i>Explore</button>
+    </div>
+    <div class="d-flex justify-content-center gap-3 mt-4 flex-wrap" style="font-size:13px;opacity:.8;">
+      <span><i class="fas fa-check-circle me-1"></i>50,000+ Students</span>
+      <span><i class="fas fa-check-circle me-1"></i>Expert Instructors</span>
+      <span><i class="fas fa-check-circle me-1"></i>Certified Courses</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ STATS ══════════ -->
+<div class="stats-wrap">
+  <div class="container">
+    <div class="row g-3">
+      <div class="col-6 col-md-3"><div class="stat-card"><h2>50K+</h2><p>Active Students</p></div></div>
+      <div class="col-6 col-md-3"><div class="stat-card"><h2>200+</h2><p>Expert Instructors</p></div></div>
+      <div class="col-6 col-md-3"><div class="stat-card"><h2>{{ courses|length }}+</h2><p>Live Courses</p></div></div>
+      <div class="col-6 col-md-3"><div class="stat-card"><h2>98%</h2><p>Success Rate</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ COURSES ══════════ -->
+<section id="courses" style="padding:60px 0 40px;">
+  <div class="container">
+    <div class="text-center mb-4">
+      <h2 class="fw-bold" style="font-size:32px;">Explore <span style="color:#5a67d8;">Popular Courses</span></h2>
+      <p class="text-muted">Choose your path and start learning today</p>
+    </div>
+
+    <!-- Category Filter -->
+    <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
+      <div class="category-chip active" data-cat="all"><i class="fas fa-th-large"></i> All</div>
+      {% comment %} <div class="category-chip" data-cat="web"><i class="fab fa-react"></i> Web Dev</div>
+      <div class="category-chip" data-cat="java"><i class="fab fa-java"></i> Java</div>
+      <div class="category-chip" data-cat="python"><i class="fab fa-python"></i> Python</div>
+      <div class="category-chip" data-cat="data"><i class="fas fa-chart-bar"></i> Data</div>
+      <div class="category-chip" data-cat="ai"><i class="fas fa-brain"></i> AI/ML</div> {% endcomment %}
+      <div class="category-chip" data-cat="accounting"><i class="fas fa-coins"></i> Accounting</div>
+      <div class="category-chip" data-cat="business"><i class="fas fa-briefcase"></i> Business</div>
+      <div class="category-chip" data-cat="diet"><i class="fas fa-apple-alt"></i> Diet</div>
+      <div class="category-chip" data-cat="computer_science"><i class="fas fa-laptop-code"></i> CS</div>
+    </div>
+
+    <!-- Course Grid -->
+    {% if courses %}
+    <div class="row g-4" id="coursesGrid">
+      {% for course in courses %}
+      <div class="col-xl-3 col-lg-4 col-md-6 course-col" data-cat="{{ course.category }}">
+        <div class="c-card">
+          <div class="c-img-wrap">
+            {% if course.thumbnail %}
+              <img src="{{ course.thumbnail.url }}" class="c-img" alt="{{ course.title }}"
+                   onerror="this.parentElement.innerHTML='<div class=\'c-img-placeholder\'>🎓</div>'">
+            {% else %}
+              <div class="c-img-placeholder">🎓</div>
+            {% endif %}
+            {% if course.badge %}<span class="c-badge">{{ course.badge }}</span>{% endif %}
+          </div>
+          <div class="c-body">
+            <div class="c-title">{{ course.title }}</div>
+            <div class="c-instructor">
+              <i class="fas fa-user-graduate"></i>
+              {{ course.trainer.get_full_name|default:"Teachvion Instructor" }}
+            </div>
+            <div class="c-stars">★★★★★ <span style="color:#555;font-size:11px;">4.8</span></div>
+            <div class="c-footer">
+              <span class="c-price">₹{{ course.price }}</span>
+              {% if user.is_authenticated %}
+                {% if user.role == 'student' %}
+                  <button class="btn-enroll"
+                          data-id="{{ course.id }}"
+                          data-title="{{ course.title|escapejs }}">
+                    Enroll Now <i class="fas fa-arrow-right"></i>
+                  </button>
+                {% elif user.role == 'trainer' %}
+                  {% if course.trainer == user %}
+                    <a href="{% url 'upload_lesson' course.id %}" class="btn-manage">
+                      <i class="fas fa-upload"></i> Manage
+                    </a>
+                  {% else %}
+                    <span style="font-size:12px;color:#aaa;">View Only</span>
+                  {% endif %}
+                {% elif user.role == 'admin' %}
+                  <a href="{% url 'admin_course_edit' course.id %}" class="btn-manage">
+                    <i class="fas fa-edit"></i> Edit
+                  </a>
+                {% endif %}
+              {% else %}
+                <button class="btn-enroll"
+                        data-id="{{ course.id }}"
+                        data-title="{{ course.title|escapejs }}">
+                  Enroll Now <i class="fas fa-arrow-right"></i>
+                </button>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <div id="no-results" class="text-center py-5">
+      <i class="fas fa-search fa-3x text-muted mb-3"></i>
+      <h5 class="text-muted">No courses found</h5>
+      <p class="text-muted">Try a different keyword or category</p>
+      <button class="btn btn-outline-primary rounded-pill px-4 mt-2" onclick="resetFilter()">
+        Show All Courses
+      </button>
+    </div>
+
+    {% else %}
+    <div class="text-center py-5 bg-white rounded-4 shadow-sm">
+      <div style="font-size:56px;margin-bottom:16px;">📚</div>
+      <h5 class="fw-bold mb-2">No courses yet</h5>
+      <p class="text-muted mb-4">Courses will appear here once added by the admin.</p>
+      {% if user.is_authenticated and user.role == 'admin' %}
+        <a href="{% url 'admin_course_create' %}" class="btn btn-primary rounded-pill px-4">
+          <i class="fas fa-plus me-1"></i>Add First Course
+        </a>
+      {% endif %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+
+<!-- ══════════ FEATURES ══════════ -->
+<section class="features-section" id="Features">
+  <div class="container">
+    <div class="row align-items-center g-5">
+      <div class="col-lg-6">
+        <h2 class="fw-bold" style="font-size:32px;">
+          Why Choose <span style="color:#5a67d8;">Teachvion?</span>
+        </h2>
+        <p class="text-muted mb-4">We provide the best learning experience with cutting-edge tools and career support.</p>
+        <div class="feature-item">
+          <div class="feature-icon">🏆</div>
+          <div>
+            <h5>Certified Courses</h5>
+            <p>Industry-recognized certificates that employers trust and value</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">💻</div>
+          <div>
+            <h5>Live Projects</h5>
+            <p>Real-world portfolio projects that get you hired faster</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🎧</div>
+          <div>
+            <h5>24/7 Mentor Support</h5>
+            <p>Get answers from expert mentors whenever you're stuck</p>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">📱</div>
+          <div>
+            <h5>Learn Anywhere</h5>
+            <p>Access all courses on desktop, tablet, and mobile devices</p>
+          </div>
+        </div>
+      </div>
+      <div class="col-lg-6">
+        <img src="{% static 'images/online-learning.jpg' %}" class="features-img"
+             alt="Online Learning"
+             onerror="this.style.display='none'">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ TESTIMONIALS ══════════ -->
+<section class="testi-section">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2 class="fw-bold" style="font-size:32px;">
+        What Our <span style="color:#5a67d8;">Students Say</span>
+      </h2>
+      <p class="text-muted">Real results from real learners</p>
+    </div>
+
+    <!-- Approved testimonials from DB -->
+    {% if testimonials %}
+    <div class="row g-4 justify-content-center mb-5">
+      {% for testi in testimonials %}
+      <div class="col-md-4">
+        <div class="testi-card">
+          {% if testi.student.profile_pic %}
+            <img src="{{ testi.student.profile_pic.url }}" class="testi-avatar" alt="">
+          {% else %}
+            <div class="testi-avatar-placeholder">
+              {{ testi.student.first_name|first|upper }}{{ testi.student.last_name|first|upper }}
+            </div>
+          {% endif %}
+          <h5>{{ testi.student.get_full_name }}</h5>
+          <small class="text-muted">Teachvion Student</small>
+          <p>"{{ testi.message }}"</p>
+          <div class="testi-stars">
+            {% for i in "12345" %}
+              {% if forloop.counter <= testi.rating %}★{% else %}☆{% endif %}
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <!-- Default static testimonials shown when no DB testimonials yet -->
+    <div class="row g-4 justify-content-center mb-5">
+      <div class="col-md-4">
+        <div class="testi-card">
+          <img src="{% static 'images/testinomial-img1.jpg' %}" class="testi-avatar"
+               alt="" onerror="this.style.display='none'">
+          <h5>Sarah Johnson</h5>
+          <small class="text-muted">Full Stack Developer</small>
+          <p>"The Python Full Stack course changed my career! Got a job within 3 months."</p>
+          <div class="testi-stars">★★★★★</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="testi-card">
+          <img src="{% static 'images/testinomial-img2.jpg' %}" class="testi-avatar"
+               alt="" onerror="this.style.display='none'">
+          <h5>Michael Chen</h5>
+          <small class="text-muted">Data Analyst</small>
+          <p>"The Data Analyst track is super practical. Projects helped me build a great portfolio."</p>
+          <div class="testi-stars">★★★★★</div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="testi-card">
+          <img src="{% static 'images/testinomial-img3.jpg' %}" class="testi-avatar"
+               alt="" onerror="this.style.display='none'">
+          <h5>Priya Sharma</h5>
+          <small class="text-muted">AI Engineer</small>
+          <p>"AI/ML course is top-notch! Instructors are amazing and support is great."</p>
+          <div class="testi-stars">★★★★★</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Submit Testimonial Form (students only) -->
+    {% if user.is_authenticated and user.role == 'student' %}
+    <div class="row justify-content-center">
+      <div class="col-md-7">
+        <div class="testi-form-card">
+          <h5><i class="fas fa-pen me-2"></i>Share Your Experience</h5>
+          <p class="text-muted" style="font-size:13px; margin-bottom:14px;">
+            Your review helps other students choose the right course.
+          </p>
+          <form method="post" action="{% url 'submit_testinomial' %}">
+            {% csrf_token %}
+            <!-- Star rating -->
+            <label style="font-size:13px; font-weight:600; color:#374151;">Your Rating</label>
+            <div class="star-rating">
+              <input type="radio" name="rating" id="s5" value="5" checked>
+              <label for="s5">★</label>
+              <input type="radio" name="rating" id="s4" value="4">
+              <label for="s4">★</label>
+              <input type="radio" name="rating" id="s3" value="3">
+              <label for="s3">★</label>
+              <input type="radio" name="rating" id="s2" value="2">
+              <label for="s2">★</label>
+              <input type="radio" name="rating" id="s1" value="1">
+              <label for="s1">★</label>
+            </div>
+            <!-- Message -->
+            <div class="mb-3 mt-2">
+              <label style="font-size:13px; font-weight:600; color:#374151;">Your Message</label>
+              <textarea name="message" class="form-control mt-1" rows="3"
+                        placeholder="Share what you loved about Teachvion..."
+                        style="border-radius:10px; font-size:14px; resize:none;"
+                        maxlength="500" required></textarea>
+              <div style="font-size:11px; color:#aaa; margin-top:4px; text-align:right;">
+                Max 500 characters
+              </div>
+            </div>
+            <button type="submit" class="btn rounded-pill fw-bold px-4"
+                    style="background:linear-gradient(135deg,#5a67d8,#7b4bb7); color:white;">
+              <i class="fas fa-paper-plane me-1"></i>Submit Review
+            </button>
+            <span style="font-size:12px; color:#888; margin-left:10px;">
+              Reviews appear after approval.
+            </span>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</section>
+
+<!-- ══════════ NEWSLETTER + CONTACT ══════════ -->
+<section class="nl-section" id="contact">
+  <div class="container">
+    <div class="row g-4">
+      <div class="col-md-6">
+        <div class="nl-card">
+          <h4 class="fw-bold mb-1">Stay Updated 📢</h4>
+          <p class="text-muted" style="font-size:14px;">
+            Subscribe to get notified about new courses and special offers.
+          </p>
+          <div class="nl-input">
+            <input type="email" placeholder="Enter your email address">
+            <button>Subscribe</button>
+          </div>
+          <p style="font-size:11px; color:#aaa; margin-top:8px;">No spam. Unsubscribe anytime.</p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="ct-card">
+          <h4 class="fw-bold mb-1">Contact Us 📬</h4>
+          <p class="text-muted mb-3" style="font-size:14px;">Have questions? We're here to help.</p>
+          <ul>
+            <li><i class="fas fa-envelope me-2 text-primary"></i><strong>Email:</strong> support@teachvion.com</li>
+            <li><i class="fas fa-phone me-2 text-success"></i><strong>Phone:</strong> +91 1234567890</li>
+            <li><i class="fas fa-map-marker-alt me-2 text-danger"></i><strong>Location:</strong> Hyderabad, Telangana</li>
+            <li><i class="fas fa-clock me-2 text-warning"></i><strong>Support:</strong> Mon–Sat, 9 AM – 6 PM</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Back to top -->
+<button id="backToTop"
+  style="display:none;position:fixed;bottom:24px;right:24px;background:linear-gradient(135deg,#5a67d8,#7b4bb7);color:white;border:none;border-radius:50%;width:46px;height:46px;font-size:20px;cursor:pointer;box-shadow:0 6px 20px rgba(90,103,216,.45);z-index:999;">↑</button>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+/* ═══════════════════════════════════════
+   CATEGORY FILTER
+═══════════════════════════════════════ */
+document.querySelectorAll('.category-chip').forEach(function(chip) {
+  chip.addEventListener('click', function() {
+    document.querySelectorAll('.category-chip').forEach(function(c) {
+      c.classList.remove('active');
+    });
+    this.classList.add('active');
+
+    var cat = this.dataset.cat;
+    var visible = 0;
+
+    document.querySelectorAll('.course-col').forEach(function(col) {
+      var match = (cat === 'all') || (col.dataset.cat === cat);
+      col.style.display = match ? '' : 'none';
+      if (match) visible++;
+    });
+
+    var noResults = document.getElementById('no-results');
+    if (noResults) noResults.style.display = visible === 0 ? 'block' : 'none';
+  });
+});
+
+/* ═══════════════════════════════════════
+   SEARCH
+═══════════════════════════════════════ */
+function doSearch() {
+  var q = document.getElementById('searchInput').value.toLowerCase().trim();
+  var visible = 0;
+
+  document.querySelectorAll('.category-chip').forEach(function(c) {
+    c.classList.remove('active');
+  });
+  var allChip = document.querySelector('[data-cat="all"]');
+  if (allChip) allChip.classList.add('active');
+
+  document.querySelectorAll('.course-col').forEach(function(col) {
+    var text  = col.innerText.toLowerCase();
+    var match = !q || text.includes(q);
+    col.style.display = match ? '' : 'none';
+    if (match) visible++;
+  });
+
+  var noResults = document.getElementById('no-results');
+  if (noResults) noResults.style.display = visible === 0 ? 'block' : 'none';
+}
+
+function resetFilter() {
+  document.getElementById('searchInput').value = '';
+  document.querySelectorAll('.category-chip').forEach(function(c) { c.classList.remove('active'); });
+  var allChip = document.querySelector('[data-cat="all"]');
+  if (allChip) allChip.classList.add('active');
+  document.querySelectorAll('.course-col').forEach(function(col) { col.style.display = ''; });
+  var noResults = document.getElementById('no-results');
+  if (noResults) noResults.style.display = 'none';
+}
+
+document.getElementById('searchBtn').addEventListener('click', doSearch);
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') doSearch();
+});
+
+/* ═══════════════════════════════════════
+   ENROLL BUTTON
+═══════════════════════════════════════ */
+document.querySelectorAll('.btn-enroll[data-id]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var courseId    = this.dataset.id;
+    var courseTitle = this.dataset.title || 'this course';
+    var self        = this;
+    var origHTML    = this.innerHTML;
+
+    /* Show spinner */
+    self.innerHTML = '<span class="spin"></span> Please wait...';
+    self.disabled  = true;
+
+    fetch('/enroll/' + courseId + '/', {
+      method: 'GET',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) {
+      if (!r.ok) throw new Error('Server error: ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      if (data.status === 'login_required') {
+        window.location.href = data.login_url || ('/login/?next=/enroll/' + courseId + '/');
+
+      } else if (data.status === 'payment_required') {
+        window.location.href = data.payment_url || ('/payment/' + data.enrollment_id + '/');
+
+      } else if (data.status === 'already_enrolled') {
+        if (confirm('You are already enrolled in "' + courseTitle + '"!\n\nGo to the course player?')) {
+          window.location.href = data.player_url || '/my-courses/';
+        } else {
+          self.innerHTML = origHTML;
+          self.disabled  = false;
+        }
+
+      } else if (data.status === 'error') {
+        alert(data.message || 'Something went wrong.');
+        self.innerHTML = origHTML;
+        self.disabled  = false;
+
+      } else {
+        self.innerHTML = origHTML;
+        self.disabled  = false;
+      }
+    })
+    .catch(function(err) {
+      console.error('Enroll error:', err);
+      alert('Connection error. Please refresh the page and try again.');
+      self.innerHTML = origHTML;
+      self.disabled  = false;
+    });
+  });
+});
+
+/* ═══════════════════════════════════════
+   BACK TO TOP
+═══════════════════════════════════════ */
+var topBtn = document.getElementById('backToTop');
+window.addEventListener('scroll', function() {
+  topBtn.style.display = window.scrollY > 400 ? 'block' : 'none';
+});
+topBtn.addEventListener('click', function() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+});
+</script>
+{% endblock %}

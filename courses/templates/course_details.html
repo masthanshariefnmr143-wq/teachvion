@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ course.title }} — Teachvion{% endblock %}
+{% block content %}
+<div style="background:#1a1a2e; color:white; padding:50px 0;">
+  <div class="container">
+    <div class="row align-items-center g-4">
+      <div class="col-lg-8">
+        <span class="badge bg-primary rounded-pill mb-2">{{ course.get_category_display }}</span>
+        {% if course.badge %}<span class="badge bg-warning text-dark rounded-pill mb-2 ms-1">{{ course.badge }}</span>{% endif %}
+        <h1 class="fw-bold" style="font-size:2rem;">{{ course.title }}</h1>
+        <p style="opacity:.85; font-size:15px; margin-top:10px;">{{ course.description|truncatewords:30 }}</p>
+        <p style="font-size:14px; opacity:.7;"><i class="fas fa-user-graduate me-1"></i>{{ course.trainer.get_full_name|default:"Teachvion Instructor" }}</p>
+        <div class="d-flex align-items-center gap-4 flex-wrap mt-3">
+          <span style="font-size:24px; font-weight:800; color:#fbbf24;">₹{{ course.price }}</span>
+          {% if enrolled %}
+            <a href="{% url 'course_player' course.id %}" class="btn btn-success rounded-pill px-4 fw-bold">▶ Continue Learning</a>
+          {% else %}
+            <button onclick="window.location='/enroll/{{ course.id }}/'" class="btn rounded-pill px-4 fw-bold" style="background:linear-gradient(135deg,#5a67d8,#7b4bb7);color:white;">Enroll Now</button>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-lg-4 text-center">
+        {% if course.thumbnail %}
+          <img src="{{ course.thumbnail.url }}" class="rounded-3" style="width:100%; max-width:320px; box-shadow:0 12px 40px rgba(0,0,0,.3);">
+        {% else %}
+          <div style="width:100%;max-width:320px;height:200px;background:linear-gradient(135deg,#5a67d8,#7b4bb7);border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:4rem;margin:0 auto;">🎓</div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container my-5">
+  <div class="row g-4">
+    <div class="col-lg-8">
+      <h4 class="fw-bold mb-4">📋 Course Curriculum ({{ lessons|length }} lessons)</h4>
+      {% for lesson in lessons %}
+      <div style="background:white; border-radius:12px; padding:14px 18px; margin-bottom:8px; box-shadow:0 2px 8px rgba(0,0,0,.05); display:flex; align-items:center; gap:12px;">
+         <div style="width:32px;height:32px;border-radius:50%;background:{% if enrolled %}#5a67d8{% else %}#e9ecef{% endif %};color:{% if enrolled %}white{% else %}#888{% endif %};display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0;">{{ forloop.counter }}</div> 
+        <div style="flex:1;">
+          <div class="fw-semibold" style="font-size:14px;">{{ lesson.title }}</div>
+          <div style="font-size:12px;color:#888;">
+            {% if lesson.duration_mins %}<i class="fas fa-clock me-1"></i>{{ lesson.duration_mins }} min{% endif %}
+            {% if lesson.pdf_file %} | <i class="fas fa-file-pdf me-1 text-danger"></i>PDF{% endif %}
+            {% if lesson.notes %} | <i class="fas fa-sticky-note me-1 text-warning"></i>Notes{% endif %}
+          </div>
+        </div>
+        {% if enrolled %}<i class="fas fa-play-circle text-primary"></i>{% else %}<i class="fas fa-lock text-muted"></i>{% endif %}
+      </div>
+      {% empty %}
+      <p class="text-muted">No lessons added yet.</p>
+      {% endfor %}
+    </div>
+    <div class="col-lg-4">
+      <div style="background:white; border-radius:16px; padding:24px; box-shadow:0 4px 16px rgba(0,0,0,.07); position:sticky; top:80px;">
+        <div style="font-size:28px; font-weight:800; color:#5a67d8; margin-bottom:16px;">₹{{ course.price }}</div>
+        {% if enrolled %}
+          <a href="{% url 'course_player' course.id %}" class="btn w-100 btn-success rounded-pill fw-bold mb-3">▶ Continue Learning</a>
+        {% else %}
+          <button onclick="window.location='/enroll/{{ course.id }}/'" class="btn w-100 rounded-pill fw-bold mb-3" style="background:linear-gradient(135deg,#5a67d8,#7b4bb7);color:white;">Enroll Now</button>
+        {% endif %}
+        <div style="font-size:13px; color:#555;">
+          <div class="py-2 border-bottom"><i class="fas fa-book me-2 text-primary"></i>{{ lessons|length }} lessons</div>
+          <div class="py-2 border-bottom"><i class="fas fa-certificate me-2 text-success"></i>Certificate on completion</div>
+          <div class="py-2 border-bottom"><i class="fas fa-infinity me-2 text-info"></i>Lifetime access</div>
+          <div class="py-2"><i class="fas fa-mobile-alt me-2 text-warning"></i>Access on all devices</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

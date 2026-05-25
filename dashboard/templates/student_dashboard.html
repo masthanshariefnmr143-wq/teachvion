@@ -1,0 +1,218 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Student Dashboard — Teachvion{% endblock %}
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="dash-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <span class="badge-role">Student Dashboard</span>
+        <h2 class="mt-2 mb-1 fw-bold">Welcome back, {{ student.first_name }}! 👋</h2>
+        <p class="mb-0 opacity-75">{{ student.email }}</p>
+      </div>
+      <a href="{% url 'profile' %}" class="btn btn-light rounded-pill px-4">
+        <i class="fas fa-user-edit me-2"></i>Edit Profile
+      </a>
+    </div>
+  </div>
+</div>
+
+<div class="container my-4">
+
+  <!-- ── STAT CARDS ── -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-md-3">
+      <div class="stat-card position-relative">
+        <i class="fas fa-book-open icon"></i>
+        <div class="number">{{ total_enrolled }}</div>
+        <div class="label">Enrolled Courses</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card position-relative" style="border-color:#2d6a4f;">
+        <i class="fas fa-certificate icon" style="color:#2d6a4f;"></i>
+        <div class="number" style="color:#2d6a4f;">{{ total_certs }}</div>
+        <div class="label">Certificates Earned</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card position-relative" style="border-color:#f59e0b;">
+        <i class="fas fa-rupee-sign icon" style="color:#f59e0b;"></i>
+        <div class="number" style="color:#f59e0b;">₹{{ total_spent|floatformat:0 }}</div>
+        <div class="label">Total Invested</div>
+      </div>
+    </div>
+    <div class="col-6 col-md-3">
+      <div class="stat-card position-relative" style="border-color:#ef4444;">
+        <i class="fas fa-clock icon" style="color:#ef4444;"></i>
+        <div class="number" style="color:#ef4444;">{{ pending_enrollments|length }}</div>
+        <div class="label">Pending Payments</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LIVE CLASS ALERTS ── -->
+  {% if live_class_notifications %}
+  <div class="mb-4">
+    <div class="alert alert-info rounded-4">
+      <strong>New live class scheduled!</strong>
+      <ul class="mb-0 mt-2" style="padding-left:20px;">
+        {% for note in live_class_notifications %}
+        <li style="font-size:13px; margin-bottom:4px;">
+          {{ note.course_title }} — {{ note.day }} {{ note.time }}
+          {% if note.meeting_link %}
+          • <a href="{{ note.meeting_link }}" target="_blank">Join meeting</a>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- ── PENDING PAYMENTS ── -->
+  {% if pending_enrollments %}
+  <div class="mb-4">
+    <div class="section-title">⚠️ Pending Payments</div>
+    {% for e in pending_enrollments %}
+    <div class="payment-pending d-flex justify-content-between align-items-center mb-2">
+      <div>
+        <strong>{{ e.course.title }}</strong>
+        <div style="font-size:13px;color:#888;">Complete payment to access this course</div>
+      </div>
+      <a href="{% url 'payment' e.id %}" class="btn btn-pay">
+        <i class="fas fa-credit-card me-1"></i>Pay ₹{{ e.course.price }}
+      </a>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="row g-4">
+    <!-- ── MY COURSES ── -->
+    <div class="col-lg-8">
+      <div class="section-title">📚 My Courses</div>
+      {% if courses_data %}
+        {% for item in courses_data %}
+        <div class="course-progress-card">
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <h6 class="fw-bold mb-1">{{ item.course.title }}</h6>
+              <small class="text-muted">{{ item.completed_lessons }}/{{ item.total_lessons }} lessons completed</small>
+            </div>
+            <span class="badge" style="background:{% if item.progress == 100 %}#2d6a4f{% else %}#5a67d8{% endif %}; color:white; border-radius:20px; padding:4px 10px;">
+              {{ item.progress }}%
+            </span> 
+          </div>
+          <div class="progress mb-3">
+             <div class="progress-bar" style="width:{{ item.progress }}%"></div> 
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'course_player' item.course.id %}" class="btn btn-sm btn-primary rounded-pill">
+              <i class="fas fa-play me-1"></i>Open Course Player
+            </a>
+            {% if item.can_take_exam %}
+              {% if item.exam_attempt %}
+                <a href="{% url 'exam_result' item.exam_attempt.id %}" class="btn btn-sm btn-success rounded-pill">
+                  <i class="fas fa-chart-bar me-1"></i>View Score ({{ item.exam_attempt.percentage|floatformat:0 }}%)
+                </a>
+              {% else %}
+                <a href="{% url 'take_exam' item.course.id %}" class="btn btn-sm btn-warning rounded-pill">
+                  <i class="fas fa-pen me-1"></i>Take Exam
+                </a>
+              {% endif %}
+            {% else %}
+              <span class="btn btn-sm btn-outline-secondary rounded-pill disabled">
+                <i class="fas fa-lock me-1"></i>Complete course to unlock exam
+              </span>
+            {% endif %}
+          </div>
+          {% if item.timings %}
+          <div class="course-schedule mt-3" style="background:#f8fafc;border-radius:14px;padding:14px;">
+            <div style="font-size:13px;font-weight:700;color:#1e3a8a;margin-bottom:8px;">Upcoming Live Sessions</div>
+            {% for t in item.timings %}
+            <div class="d-flex justify-content-between align-items-center mb-2" style="font-size:13px;">
+              <div>
+                <div>
+                  <strong>{% if t.date %}{{ t.date|date:"D, d M Y" }}{% else %}{{ t.get_day_of_week_display }}{% endif %}</strong>
+                  • {{ t.start_time|time:"H:i" }} - {{ t.end_time|time:"H:i" }}
+                </div>
+                {% if t.notes %}
+                <div style="font-size:12px;color:#475569;">{{ t.notes }}</div>
+                {% endif %}
+              </div>
+              {% if t.meeting_link %}
+              <a href="{{ t.meeting_link }}" target="_blank" class="btn btn-sm btn-outline-primary rounded-pill" style="font-size:11px;">Join</a>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="empty-state bg-white rounded-4 shadow-sm">
+          <i class="fas fa-book-open text-muted"></i>
+          <p>No courses yet. <a href="{% url 'index' %}">Browse courses</a> and enroll!</p>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- ── SIDEBAR ── -->
+    <div class="col-lg-4">
+      <!-- Certificates -->
+      <div class="section-title">🏆 My Certificates</div>
+      {% if certificates %}
+        {% for cert in certificates %}
+        <div class="cert-card mb-3">
+          <div class="d-flex justify-content-between align-items-start">
+            <div>
+              <div class="fw-bold" style="font-size:14px;">{{ cert.course.title }}</div>
+              <div style="font-size:12px; color:#5a67d8;">{{ cert.certificate_number }}</div>
+              <div style="font-size:12px; color:#888; margin-top:4px;">{{ cert.issued_at|date:"d M Y" }}</div>
+              {% if cert.exam_attempt %}
+              <div style="font-size:12px; color:#2d6a4f; font-weight:600;">Score: {{ cert.exam_attempt.percentage|floatformat:1 }}%</div>
+              {% endif %}
+            </div>
+            <i class="fas fa-certificate" style="color:#5a67d8; font-size:24px;"></i>
+          </div>
+          <div class="d-flex gap-2 mt-3">
+            <a href="{% url 'certificate_detail' cert.id %}" class="btn btn-sm btn-outline-primary rounded-pill">View</a>
+            <a href="{% url 'certificate_pdf' cert.id %}" class="btn btn-sm btn-outline-danger rounded-pill">PDF</a>
+            <a href="{% url 'certificate_delivery' cert.id %}" class="btn btn-sm btn-outline-secondary rounded-pill">Delivery</a>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="cert-card text-center text-muted">
+          <i class="fas fa-certificate fa-2x mb-2" style="color:#ccc;"></i>
+          <p style="font-size:13px;">Complete a course exam (≥50%) to earn certificates.</p>
+        </div>
+      {% endif %}
+
+      {% comment %} <!-- Quick Links -->
+       <div class="section-title mt-4">🔗 Quick Links</div>
+      <div class="bg-white rounded-4 p-3 shadow-sm">
+        <a href="{% url 'my_courses' %}" class="d-flex align-items-center gap-3 py-2 text-decoration-none text-dark border-bottom">
+          <i class="fas fa-book text-primary"></i> All My Courses
+        </a>
+        <a href="{% url 'exam' %}" class="d-flex align-items-center gap-3 py-2 text-decoration-none text-dark border-bottom">
+          <i class="fas fa-pen-to-square text-warning"></i> Exam Hub
+        </a>
+        <a href="{% url 'certificate' %}" class="d-flex align-items-center gap-3 py-2 text-decoration-none text-dark border-bottom">
+          <i class="fas fa-certificate text-success"></i> Certificates
+        </a>
+        <a href="{% url 'profile' %}" class="d-flex align-items-center gap-3 py-2 text-decoration-none text-dark">
+          <i class="fas fa-user text-secondary"></i> Edit Profile
+        </a>
+      </div>{% endcomment %}
+    </div> 
+  </div>
+</div> 
+{% endblock %}

@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% block title %}Payment — {{ course.title }} — Teachvion{% endblock %}
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+<!-- Store config in data attributes — no Django tags inside JS -->
+<div id="payConfig"
+     data-enrollment-id="{{ enrollment.id }}"
+     data-razorpay-key="{{ razorpay_key }}"
+     data-razorpay-order="{{ enrollment.razorpay_order_id }}"
+     data-amount="{{ course.price }}"
+     data-course-title="{{ course.title }}"
+     data-confirm-url="{% url 'payment_confirm' enrollment.id %}"
+     data-player-url="{% url 'course_player' course.id %}"
+     data-csrf="{{ csrf_token }}"
+     style="display:none;">
+</div>
+
+<div class="payment-wrapper">
+
+  <!-- ── Order Summary ── -->
+  <div class="order-summary">
+    <h5 class="fw-bold mb-3" style="color:#1e3c72;">🛒 Order Summary</h5>
+    <div class="course-thumb">🎓</div>
+    <div class="fw-bold" style="font-size:14px; color:#1a1a2e;">{{ course.title }}</div>
+    <div style="font-size:12px; color:#888; margin:4px 0 14px;">
+      By {{ course.trainer.get_full_name|default:"Teachvion" }}
+    </div>
+    <div class="price-row">
+      <span>Course Price</span>
+      <span>₹{{ course.price }}</span>
+    </div>
+    <div class="price-row">
+      <span>GST (18%)</span>
+      <span>Included</span>
+    </div>
+    <div class="price-row total">
+      <span>Total</span>
+      <span>₹{{ course.price }}</span>
+    </div>
+    <div style="background:#f0fff4; border-radius:10px; padding:10px; margin-top:12px; font-size:12px; color:#2e7d32; text-align:center;">
+      🔒 30-Day Money Back Guarantee
+    </div>
+  </div>
+
+  <!-- ── Payment Card ── -->
+  <div class="payment-card">
+    <h5 class="fw-bold mb-3" style="color:#1e3c72;">💳 Choose Payment Method</h5>
+
+    {% if force_upi %}
+    <div class="method-tabs">
+      <div class="method-tab active"><span class="ti">📱</span>UPI</div>
+    </div>
+    {% else %}
+    <div class="method-tabs">
+      <div class="method-tab active" onclick="switchTab('card',this)"><span class="ti">💳</span>Card</div>
+      <div class="method-tab" onclick="switchTab('upi',this)"><span class="ti">📱</span>UPI</div>
+      <div class="method-tab" onclick="switchTab('netbanking',this)"><span class="ti">🏦</span>Net Banking</div>
+      <div class="method-tab" onclick="switchTab('wallet',this)"><span class="ti">👛</span>Wallet</div>
+      <div class="method-tab" onclick="switchTab('emi',this)"><span class="ti">📅</span>EMI</div>
+    </div>
+    {% endif %}
+
+    <!-- Card Panel -->
+    {% if not force_upi %}
+    <div class="payment-panel active" id="p-card">
+      <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/4/41/Visa_Logo.png" height="24" style="border:1px solid #e0e0e0; border-radius:4px; padding:2px 6px; object-fit:contain; background:white;">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" height="24" style="border:1px solid #e0e0e0; border-radius:4px; padding:2px 6px; object-fit:contain; background:white;">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/d/d1/RuPay.svg" height="24" style="border:1px solid #e0e0e0; border-radius:4px; padding:2px 6px; object-fit:contain; background:white;">
+      </div>
+      <input class="pay-input" type="text" placeholder="Cardholder Name">
+      <input class="pay-input" type="text" id="cardNum" placeholder="1234  5678  9012  3456" maxlength="19" oninput="fmtCard(this)">
+      <div style="display:flex; gap:10px;">
+        <input class="pay-input" type="text" placeholder="MM / YY" maxlength="7" oninput="fmtExpiry(this)" style="flex:1;">
+        <input class="pay-input" type="password" placeholder="CVV" maxlength="4" style="flex:1;">
+      </div>
+      <input class="pay-input" type="email" placeholder="Email for receipt">
+      <button class="pay-btn" onclick="doPayment()">🔐 Pay ₹{{ course.price }} Securely</button>
+    </div>
+
+    {% endif %}
+    <!-- UPI Panel -->
+    <div class="payment-panel active" id="p-upi">
+      <div class="upi-apps">
+        <div class="upi-app" onclick="sel(this,'.upi-app')">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/f/f2/Google_Pay_Logo.svg" alt="GPay">GPay
+        </div>
+        <div class="upi-app" onclick="sel(this,'.upi-app')">
+          <img src="https://images.openai.com/static-rsc-4/4O-a93rc2mt13gAJtCYzbFCJZdQ2BaTwVhU2tCBModxre9u6pyrW0TFl7EDqCzOpnGdXrbs9rmsJzlNOxulZRoIGBtVuhFN7BGpowmd2XqIIUNUKeqgw_Y41pa6opp2UpJnpDFUE2jXXWTYuuFmQlhh7YvlE8Mjo9cJPJLz5ya1bweEq37aGxPYx4nxQC9HZ?purpose=fullsize" alt="PhonePe">PhonePe
+        </div>
+        <div class="upi-app" onclick="sel(this,'.upi-app')">
+          <img src="https://upload.wikimedia.org/wikipedia/commons/4/42/Paytm_logo.png" alt="Paytm">Paytm
+        </div>
+        <div class="upi-app" onclick="sel(this,'.upi-app')">
+          <img src="https://images.openai.com/static-rsc-4/sJpS2T0WKOP6apPmJyhazLDGbR22Fx3IwF5TwblHlJeVjvwRp2pH16KWkDGr_7X3Q2iMQTQZWdzyl-Qz-y-wQixTmY_qFHAANU2o2crwAf6l-AcpRwHndPHEjw9Jof77kLDlTKpbx6_bnC4NvEFXtIpDlwXH34rbyy2X0CsHG04?purpose=inline" onerror="this.style.display='none'" alt="BHIM">BHIM
+        </div>
+      </div>
+      <div style="text-align:center; color:#aaa; font-size:13px; margin:10px 0;">— OR enter UPI ID —</div>
+      <div style="display:flex;gap:12px;align-items:center;justify-content:center;margin-bottom:10px;">
+        {% if upi_qr %}
+        <img src="{{ upi_qr }}" alt="UPI QR" style="width:120px;height:120px;border-radius:8px;object-fit:cover;border:1px solid #e6eef5;margin-right:8px;">
+        {% endif %}
+        <div style="text-align:left;">
+          <div style="font-size:13px;color:#111;font-weight:700;">Pay via UPI</div>
+          <div style="font-size:14px;color:#333;margin-top:6px;">{{ upi_name }}</div>
+          <div style="font-size:13px;color:#666;margin-top:6px;">VPA: <span id="upiVpa">{{ upi_vpa }}</span>
+            <button class="copy-btn" onclick="copyUPI()" style="margin-left:8px;padding:6px 8px;border-radius:8px;background:#eef2ff;border:none;color:#1e40af;">Copy</button>
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center; color:#aaa; font-size:13px; margin:10px 0;">— Or enter another UPI ID —</div>
+      <input class="pay-input" type="text" placeholder="yourname@upi">
+      <button class="pay-btn" onclick="doPayment()">📱 I have paid via UPI — Confirm</button>
+    </div>
+
+    {% if not force_upi %}
+    <!-- Net Banking Panel -->
+    <div class="payment-panel" id="p-netbanking">
+      <div class="bank-grid">
+        <div class="bank-item" onclick="sel(this,'.bank-item')">🏦 SBI</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">🏦 HDFC</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">🏦 ICICI</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">🏦 Axis</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">🏦 Kotak</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">🏦 PNB</div>
+      </div>
+      <input class="pay-input" type="text" placeholder="Search your bank...">
+      <button class="pay-btn" onclick="doPayment()">🏦 Pay ₹{{ course.price }} via Net Banking</button>
+    </div>
+
+    <!-- Wallet Panel -->
+    <div class="payment-panel" id="p-wallet">
+      <div class="bank-grid">
+        <div class="bank-item" onclick="sel(this,'.bank-item')">Paytm</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">Amazon Pay</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">PhonePe</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">GPay</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">BHIM</div>
+        <div class="bank-item" onclick="sel(this,'.bank-item')">Freecharge</div>
+      </div>
+      <button class="pay-btn" onclick="doPayment()">👛 Pay ₹{{ course.price }} via Wallet</button>
+    </div>
+
+    <!-- EMI Panel -->
+    <div class="payment-panel" id="p-emi">
+      <p style="font-size:13px; color:#666; margin-bottom:14px;">No Cost EMI available on select cards.</p>
+      <div class="emi-option" onclick="sel(this,'.emi-option')">
+        <div><strong>3 Months</strong><div style="font-size:11px;color:#aaa;">₹{{ course.price }} total</div></div>
+        <strong style="color:#5564e7;">₹{{ course.price }} / mo</strong>
+      </div>
+      <div class="emi-option" onclick="sel(this,'.emi-option')">
+        <div><strong>6 Months</strong><div style="font-size:11px;color:#aaa;">₹{{ course.price }} total</div></div>
+        <strong style="color:#5564e7;">₹{{ course.price }} / mo</strong>
+      </div>
+      <input class="pay-input mt-2" type="text" placeholder="Card Number for EMI" maxlength="19" oninput="fmtCard(this)">
+      <button class="pay-btn" onclick="doPayment()">📅 Confirm EMI Plan</button>
+    </div>
+    {% endif %}
+    
+    <p class="secure-note">🔒 256-bit SSL Encrypted &nbsp;|&nbsp; PCI DSS Compliant &nbsp;|&nbsp; 100% Secure</p>
+  </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal-overlay" id="successModal">
+  <div class="success-modal">
+    <div style="font-size:56px; margin-bottom:12px;">✅</div>
+    <h4 style="color:#1e3c72; font-weight:800; margin-bottom:8px;">Payment Successful!</h4>
+    <p style="color:#666; font-size:14px;">You have enrolled in<br><strong>{{ course.title }}</strong></p>
+    <p style="color:#888; font-size:13px; margin-top:8px;">Confirmation sent to your email.</p>
+    <a id="startLearningBtn" href="{% url 'course_player' course.id %}"
+       class="btn rounded-pill fw-bold px-4 mt-3 d-inline-block"
+       style="background:linear-gradient(135deg,#5564e7,#7b4bb7);color:white;text-decoration:none;">
+      🎓 Start Learning
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Read all config from data attributes — zero Django tags in JS
+const cfg = document.getElementById('payConfig').dataset;
+const ENROLLMENT_ID  = cfg.enrollmentId;
+const RAZORPAY_KEY   = cfg.razorpayKey;
+const RAZORPAY_ORDER = cfg.razorpayOrder;
+const AMOUNT_RS      = parseFloat(cfg.amount);
+const COURSE_TITLE   = cfg.courseTitle;
+const CONFIRM_URL    = cfg.confirmUrl;
+const PLAYER_URL     = cfg.playerUrl;
+const CSRF           = cfg.csrf;
+
+// ── Tab switching ──
+function switchTab(m, el) {
+  document.querySelectorAll('.method-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.payment-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('p-' + m).classList.add('active');
+}
+
+// ── Select UPI / Bank / Wallet / EMI ──
+function sel(el, selector) {
+  document.querySelectorAll(selector).forEach(i => i.classList.remove('sel'));
+  el.classList.add('sel');
+}
+
+// ── Card formatting ──
+function fmtCard(inp) {
+  let v = inp.value.replace(/\D/g, '').substring(0, 16);
+  inp.value = v.match(/.{1,4}/g)?.join('  ') || v;
+}
+function fmtExpiry(inp) {
+  let v = inp.value.replace(/\D/g, '').substring(0, 4);
+  if (v.length >= 2) v = v.slice(0, 2) + ' / ' + v.slice(2);
+  inp.value = v;
+}
+
+// ── Main payment function ──
+function doPayment() {
+  // If Razorpay is configured, open the checkout
+  if (RAZORPAY_KEY && RAZORPAY_ORDER) {
+    const options = {
+      key:         RAZORPAY_KEY,
+      amount:      Math.round(AMOUNT_RS * 100),
+      currency:    'INR',
+      name:        'Teachvion',
+      description: COURSE_TITLE,
+      order_id:    RAZORPAY_ORDER,
+      handler: function(response) {
+        fetch('/payment/verify/', {
+          method:  'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken':  CSRF,
+          },
+          body: JSON.stringify({
+            razorpay_order_id:   response.razorpay_order_id,
+            razorpay_payment_id: response.razorpay_payment_id,
+            razorpay_signature:  response.razorpay_signature,
+          }),
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.status === 'success') {
+            showSuccess();
+          }
+        });
+      },
+      theme: { color: '#5a67d8' },
+    };
+    new Razorpay(options).open();
+    return;
+  }
+
+  // No Razorpay — confirm via Django view (demo/test mode)
+  fetch(CONFIRM_URL, {
+    method:  'POST',
+    headers: { 'X-CSRFToken': CSRF },
+  })
+  .then(r => {
+    if (r.redirected) {
+      showSuccess();
+    } else {
+      return r.json().then(d => { if (d.ok) showSuccess(); });
+    }
+  })
+  .catch(() => showSuccess()); // show success anyway in demo mode
+}
+
+function copyUPI() {
+  const vpa = document.getElementById('upiVpa').textContent || '';
+  navigator.clipboard?.writeText(vpa).then(() => {
+    alert('UPI ID copied to clipboard');
+  }).catch(() => {
+    prompt('Copy UPI ID', vpa);
+  });
+}
+
+function showSuccess() {
+  document.getElementById('successModal').classList.add('show');
+}
+</script>
+
+{% if razorpay_key %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+{% endif %}
+{% endblock %}

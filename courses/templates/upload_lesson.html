@@ -1,0 +1,437 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Manage Lessons — {{ course.title }} — Teachvion{% endblock %}
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+
+<!-- Page Header -->
+<div class="page-header">
+  <div class="container">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <div style="font-size:12px; font-weight:600; opacity:.7; text-transform:uppercase; letter-spacing:.5px; margin-bottom:4px;">
+          Trainer Panel
+        </div>
+        <h4>📚 Manage Lessons</h4>
+        <p>{{ course.title }} &nbsp;·&nbsp; {{ lessons|length }} lesson{{ lessons|length|pluralize }} uploaded</p>
+      </div>
+      <div class="d-flex gap-2 flex-wrap">
+        <a href="{% url 'class_timings' course.id %}" class="btn btn-light rounded-pill px-3" style="font-size:13px;">
+          <i class="fas fa-clock me-1"></i>Class Timings
+        </a>
+        <a href="{% url 'trainer_dashboard' %}" class="btn btn-light rounded-pill px-3" style="font-size:13px;">
+          <i class="fas fa-arrow-left me-1"></i>Dashboard
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="container pb-5">
+  <div class="row g-4">
+
+    <!-- ══════════════════════════════════════════
+         LEFT: Upload Form
+    ══════════════════════════════════════════ -->
+    <div class="col-lg-5">
+
+      <!-- Tips -->
+      <div class="tips-box">
+        <h6><i class="fas fa-lightbulb me-1"></i>Upload Tips</h6>
+        <ul>
+          <li>Use YouTube/Vimeo embed URL for faster loading</li>
+          <li>Upload MP4 videos directly for private content</li>
+          <li>Add PDF notes to improve student engagement</li>
+          <li>Set lesson order so students follow the right sequence</li>
+        </ul>
+      </div>
+
+      <div class="card-box">
+        <div class="card-header-bar">
+          <h5><i class="fas fa-plus-circle me-2" style="color:#5a67d8;"></i>Add New Lesson</h5>
+        </div>
+        <div class="card-body-pad">
+          <form method="post" enctype="multipart/form-data" id="uploadForm">
+            {% csrf_token %}
+
+            <!-- Title -->
+            <div class="field-wrap">
+              <label>Lesson Title *</label>
+              <input type="text" name="title"
+                     placeholder="e.g. Introduction to Python Variables"
+                     value="{{ form.title.value|default:'' }}" required>
+              {% if form.title.errors %}
+                <div class="field-error">{{ form.title.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Video Upload -->
+            <div class="field-wrap">
+              <label><i class="fas fa-video me-1 text-success"></i>Upload Video File</label>
+              <div class="file-upload-wrap">
+                <div class="file-icon">🎬</div>
+                <input type="file" name="video_file" accept="video/*"
+                       id="videoFileInput" onchange="showFileName(this,'videoName')">
+                <div class="file-hint" id="videoName">MP4, WebM, MOV — max 500MB</div>
+              </div>
+              {% if form.video_file.errors %}
+                <div class="field-error">{{ form.video_file.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <div class="or-divider">OR</div>
+
+            <!-- Video URL -->
+            <div class="field-wrap">
+              <label><i class="fas fa-link me-1 text-info"></i>Video URL (YouTube / Vimeo embed)</label>
+              <input type="url" name="video_url"
+                     placeholder="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                     value="{{ form.video_url.value|default:'' }}">
+              <div style="font-size:11px; color:#aaa; margin-top:4px;">
+                Use the embed URL — YouTube: share → embed → copy src
+              </div>
+              {% if form.video_url.errors %}
+                <div class="field-error">{{ form.video_url.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- PDF -->
+            <div class="field-wrap">
+              <label><i class="fas fa-file-pdf me-1 text-danger"></i>Lesson PDF / Slides (optional)</label>
+              <div class="file-upload-wrap">
+                <div class="file-icon">📄</div>
+                <input type="file" name="pdf_file" accept=".pdf"
+                       id="pdfFileInput" onchange="showFileName(this,'pdfName')">
+                <div class="file-hint" id="pdfName">PDF only — max 20MB</div>
+              </div>
+              {% if form.pdf_file.errors %}
+                <div class="field-error">{{ form.pdf_file.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Notes -->
+            <div class="field-wrap">
+              <label><i class="fas fa-sticky-note me-1 text-warning"></i>Lesson Notes (optional)</label>
+              <textarea name="notes" placeholder="Key concepts, code snippets, summary...">{{ form.notes.value|default:'' }}</textarea>
+              {% if form.notes.errors %}
+                <div class="field-error">{{ form.notes.errors.0 }}</div>
+              {% endif %}
+            </div>
+
+            <!-- Order + Duration -->
+            <div class="row g-2">
+              <div class="col-6">
+                <div class="field-wrap mb-0">
+                  <label>Lesson Order</label>
+                  <input type="number" name="order" min="1"
+                         value="{{ form.order.value|default:lessons|length|add:'1' }}"
+                         placeholder="1">
+                </div>
+              </div>
+              <div class="col-6">
+                <div class="field-wrap mb-0">
+                  <label>Duration (minutes)</label>
+                  <input type="number" name="duration_mins" min="1"
+                         value="{{ form.duration_mins.value|default:'' }}"
+                         placeholder="30">
+                </div>
+              </div>
+            </div>
+
+            <!-- Progress bar (shown during upload) -->
+            <div class="upload-progress" id="uploadProgress">
+              <div class="bar-wrap"><div class="bar-fill" id="progressBar"></div></div>
+              <div class="bar-text" id="progressText">Uploading...</div>
+            </div>
+
+            <!-- Error summary -->
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger rounded-3 mt-3" style="font-size:13px;">
+              {{ form.non_field_errors.0 }}
+            </div>
+            {% endif %}
+
+            <button type="submit" class="btn-upload" id="submitBtn">
+              <i class="fas fa-upload me-2"></i>Upload Lesson
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════
+         RIGHT: Lesson List
+    ══════════════════════════════════════════ -->
+    <div class="col-lg-7">
+      <div class="card-box">
+        <div class="card-header-bar">
+          <h5><i class="fas fa-list me-2" style="color:#5a67d8;"></i>
+            Uploaded Lessons
+            <span style="background:#eef2ff; color:#5a67d8; font-size:12px; padding:2px 10px; border-radius:20px; margin-left:6px; font-weight:600;">
+              {{ lessons|length }}
+            </span>
+          </h5>
+          {% if lessons %}
+          <span style="font-size:12px; color:#888;">Drag to reorder</span>
+          {% endif %}
+        </div>
+
+        <div class="card-body-pad" id="lessonList">
+          {% if lessons %}
+            {% for lesson in lessons %}
+            <div class="lesson-item" data-lesson-id="{{ lesson.id }}" draggable="true">
+
+              <!-- Drag handle -->
+              <span class="drag-handle" title="Drag to reorder">⠿</span>
+
+              <!-- Number -->
+              <div class="lesson-num">{{ forloop.counter }}</div>
+
+              <!-- Info -->
+              <div style="flex:1; min-width:0;">
+                <div class="lesson-title">{{ lesson.title }}</div>
+                <div class="lesson-meta">
+                  {% if lesson.duration_mins %}
+                  <span class="meta-chip chip-dur">
+                    <i class="fas fa-clock"></i>{{ lesson.duration_mins }} min
+                  </span>
+                  {% endif %}
+                  {% if lesson.video_file %}
+                  <span class="meta-chip chip-video">
+                    <i class="fas fa-video"></i>Video
+                  </span>
+                  {% endif %}
+                  {% if lesson.video_url %}
+                  <span class="meta-chip chip-url">
+                    <i class="fas fa-link"></i>URL
+                  </span>
+                  {% endif %}
+                  {% if lesson.pdf_file %}
+                  <span class="meta-chip chip-pdf">
+                    <i class="fas fa-file-pdf"></i>PDF
+                  </span>
+                  {% endif %}
+                  {% if lesson.notes %}
+                  <span class="meta-chip chip-notes">
+                    <i class="fas fa-sticky-note"></i>Notes
+                  </span>
+                  {% endif %}
+                </div>
+
+                <!-- Preview links -->
+                <div class="d-flex gap-2 mt-2 flex-wrap">
+                  {% if lesson.video_file %}
+                  <a href="{{ lesson.video_file.url }}" target="_blank"
+                     style="font-size:12px; color:#5a67d8; text-decoration:none;">
+                    <i class="fas fa-play me-1"></i>Preview Video
+                  </a>
+                  {% endif %}
+                  {% if lesson.pdf_file %}
+                  <a href="{{ lesson.pdf_file.url }}" target="_blank"
+                     style="font-size:12px; color:#dc2626; text-decoration:none;">
+                    <i class="fas fa-file-pdf me-1"></i>View PDF
+                  </a>
+                  {% endif %}
+                  {% if lesson.video_url %}
+                  <a href="{{ lesson.video_url }}" target="_blank"
+                     style="font-size:12px; color:#0284c7; text-decoration:none;">
+                    <i class="fas fa-external-link-alt me-1"></i>Open URL
+                  </a>
+                  {% endif %}
+                </div>
+              </div>
+
+              <!-- Actions -->
+              <div class="lesson-actions">
+                <button class="btn btn-sm btn-outline-primary rounded-pill"
+                        style="font-size:12px; padding:4px 12px;"
+                        onclick="editLesson({{ lesson.id }}, '{{ lesson.title|escapejs }}', '{{ lesson.video_url|default:''|escapejs }}', {{ lesson.duration_mins|default:0 }})">
+                  <i class="fas fa-edit"></i>
+                </button> 
+                <a href="{% url 'delete_lesson' lesson.id %}"
+                   class="btn btn-sm btn-outline-danger rounded-pill"
+                   style="font-size:12px; padding:4px 12px;"
+                   onclick="return confirm('Delete lesson: {{ lesson.title|escapejs }}?\n\nThis cannot be undone.')">
+                  <i class="fas fa-trash"></i>
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+
+          {% else %}
+            <div class="empty-state">
+              <div class="empty-icon">📭</div>
+              <h6 style="color:#888; font-weight:600; margin-bottom:6px;">No lessons yet</h6>
+              <p>Upload your first lesson using the form on the left.</p>
+            </div>
+          {% endif %}
+        </div>
+
+        <!-- Stats footer -->
+        {% if lessons %}
+        <div style="background:#f8fafd; padding:14px 24px; border-top:1px solid #e9edf2; display:flex; gap:20px; flex-wrap:wrap;">
+          <div style="font-size:13px; color:#555;">
+            <i class="fas fa-video me-1 text-success"></i>
+            <strong>{{ lessons|length }}</strong> total lessons
+          </div>
+          <div style="font-size:13px; color:#555;">
+            <i class="fas fa-clock me-1 text-primary"></i>
+            Total duration: calculated from uploads
+          </div>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Course Info Card -->
+      <div class="card-box mt-4">
+        <div class="card-header-bar">
+          <h5><i class="fas fa-info-circle me-2" style="color:#2d6a4f;"></i>Course Info</h5>
+        </div>
+        <div class="card-body-pad">
+          <div class="row g-3">
+            <div class="col-6">
+              <div style="font-size:12px; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Title</div>
+              <div style="font-size:14px; font-weight:600; color:#1a2c3e; margin-top:2px;">{{ course.title }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:12px; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Category</div>
+              <div style="font-size:14px; font-weight:600; color:#1a2c3e; margin-top:2px;">{{ course.get_category_display }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:12px; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Price</div>
+              <div style="font-size:14px; font-weight:700; color:#5a67d8; margin-top:2px;">₹{{ course.price }}</div>
+            </div>
+            <div class="col-6">
+              <div style="font-size:12px; color:#888; font-weight:600; text-transform:uppercase; letter-spacing:.3px;">Enrolled</div>
+              <div style="font-size:14px; font-weight:600; color:#1a2c3e; margin-top:2px;">
+                {{ course.get_enrolled_count }} student{{ course.get_enrolled_count|pluralize }}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Edit Lesson Modal -->
+<div id="editModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center;">
+  <div style="background:white; border-radius:20px; padding:32px; max-width:440px; width:90%; box-shadow:0 20px 60px rgba(0,0,0,.2);">
+    <h5 class="fw-bold mb-4"><i class="fas fa-edit me-2 text-primary"></i>Edit Lesson</h5>
+    <form method="post" id="editForm" action="">
+      {% csrf_token %}
+      <input type="hidden" name="_method" value="edit">
+      <input type="hidden" name="lesson_id" id="edit_lesson_id">
+      <div class="field-wrap">
+        <label>Lesson Title</label>
+        <input type="text" name="edit_title" id="edit_title" required>
+      </div>
+      <div class="field-wrap">
+        <label>Video URL (optional)</label>
+        <input type="url" name="edit_video_url" id="edit_video_url" placeholder="https://www.youtube.com/embed/...">
+      </div>
+      <div class="field-wrap">
+        <label>Duration (minutes)</label>
+        <input type="number" name="edit_duration" id="edit_duration" min="1">
+      </div>
+      <div class="d-flex gap-2 mt-2">
+        <button type="button" class="btn btn-outline-secondary rounded-pill flex-fill"
+                onclick="document.getElementById('editModal').style.display='none'">Cancel</button>
+        <button type="submit" class="btn rounded-pill flex-fill fw-bold"
+                style="background:linear-gradient(135deg,#5a67d8,#7b4bb7);color:white;">Save Changes</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── Show filename after file pick ──
+function showFileName(input, labelId) {
+  const label = document.getElementById(labelId);
+  if (input.files && input.files[0]) {
+    const f    = input.files[0];
+    const size = (f.size / 1024 / 1024).toFixed(1);
+    label.textContent = `✅ ${f.name} (${size} MB)`;
+    label.style.color = '#2d6a4f';
+    label.style.fontWeight = '600';
+  }
+}
+
+// ── Upload progress simulation ──
+document.getElementById('uploadForm').addEventListener('submit', function(e) {
+  const videoFile = document.getElementById('videoFileInput').files[0];
+  if (videoFile) {
+    const btn = document.getElementById('submitBtn');
+    const progress = document.getElementById('uploadProgress');
+    const bar      = document.getElementById('progressBar');
+    const text     = document.getElementById('progressText');
+
+    btn.disabled   = true;
+    btn.textContent = 'Uploading...';
+    progress.style.display = 'block';
+
+    // Simulate progress (real progress requires XHR)
+    let pct = 0;
+    const iv = setInterval(() => {
+      pct = Math.min(pct + Math.random() * 15, 90);
+      bar.style.width  = pct + '%';
+      text.textContent = `Uploading ${Math.round(pct)}%...`;
+    }, 300);
+
+    // Form submits normally — clear interval on unload
+    window.addEventListener('beforeunload', () => clearInterval(iv));
+  }
+});
+
+// ── Open edit modal ──
+function editLesson(id, title, videoUrl, duration) {
+  document.getElementById('edit_lesson_id').value  = id;
+  document.getElementById('edit_title').value       = title;
+  document.getElementById('edit_video_url').value   = videoUrl;
+  document.getElementById('edit_duration').value    = duration;
+  document.getElementById('editModal').style.display = 'flex';
+}
+
+// Close modal on backdrop click
+document.getElementById('editModal').addEventListener('click', function(e) {
+  if (e.target === this) this.style.display = 'none';
+});
+
+// ── Drag-to-reorder (visual only) ──
+const list = document.getElementById('lessonList');
+let dragEl = null;
+
+if (list) {
+  list.querySelectorAll('.lesson-item').forEach(item => {
+    item.addEventListener('dragstart', function() {
+      dragEl = this;
+      setTimeout(() => this.style.opacity = '.4', 0);
+    });
+    item.addEventListener('dragend', function() {
+      this.style.opacity = '1';
+      dragEl = null;
+      // Renumber badges
+      list.querySelectorAll('.lesson-num').forEach((num, i) => {
+        num.textContent = i + 1;
+      });
+    });
+    item.addEventListener('dragover', function(e) {
+      e.preventDefault();
+      if (dragEl && dragEl !== this) {
+        const rect = this.getBoundingClientRect();
+        const after = e.clientY > rect.top + rect.height / 2;
+        list.insertBefore(dragEl, after ? this.nextSibling : this);
+      }
+    });
+  });
+}
+</script>
+{% endblock %}

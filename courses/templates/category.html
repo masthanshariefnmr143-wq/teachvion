@@ -1,0 +1,157 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}{{ category|title }} Courses — Teachvion{% endblock %}
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+
+<!-- Hero -->
+<div class="cat-hero">
+  <div class="container">
+    <h2>
+      {% if category == 'web' %}🌐 Web Development
+      {% elif category == 'java' %}☕ Java Full Stack
+      {% elif category == 'python' %}🐍 Python Full Stack
+      {% elif category == 'data' %}📊 Data Analytics
+      {% elif category == 'ai' %}🤖 AI / Machine Learning
+      {% elif category == 'accounting' %}💰 Accounting & Finance
+      {% elif category == 'business' %}📈 Business Management
+      {% elif category == 'diet' %}🥗 Diet & Nutrition
+      {% elif category == 'computer_science' %}💻 Computer Science
+      {% else %}{{ category|title }}
+      {% endif %}
+      Courses
+    </h2>
+    <p>Expert-led courses to master your skills</p>
+  </div>
+</div>
+
+<div class="container pb-5">
+  {% if courses %}
+  <div class="row g-4">
+    {% for course in courses %}
+    <div class="col-xl-3 col-lg-4 col-md-6">
+      <div class="c-card">
+        <!-- Thumbnail -->
+        {% if course.thumbnail %}
+          <img src="{{ course.thumbnail.url }}" class="c-img" alt="{{ course.title }}"
+               onerror="this.parentElement.innerHTML='<div class=\'c-img-ph\'>🎓</div>'">
+        {% else %}
+          <div class="c-img-ph">🎓</div>
+        {% endif %}
+
+        <div class="c-body">
+          {% if course.badge %}<span class="c-badge">{{ course.badge }}</span>{% endif %}
+          <div class="c-title">{{ course.title }}</div>
+          <div class="c-inst">
+            <i class="fas fa-user-graduate me-1"></i>
+            {{ course.trainer.get_full_name|default:"Teachvion Instructor" }}
+          </div>
+          <div class="c-footer">
+            <span class="c-price">₹{{ course.price }}</span>
+
+            {# Role-based button #}
+            {% if user.is_authenticated and user.role == 'trainer' and course.trainer == user %}
+              <a href="{% url 'upload_lesson' course.id %}"
+                 style="background:linear-gradient(135deg,#2d6a4f,#1a5f7a); color:white; border:none; border-radius:20px; padding:7px 14px; font-size:12px; font-weight:600; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                <i class="fas fa-upload"></i> Manage
+              </a>
+            {% elif user.is_authenticated and user.role == 'admin' %}
+              <a href="{% url 'admin_course_edit' course.id %}"
+                 style="background:linear-gradient(135deg,#2d6a4f,#1a5f7a); color:white; border:none; border-radius:20px; padding:7px 14px; font-size:12px; font-weight:600; text-decoration:none;">
+                <i class="fas fa-edit"></i> Edit
+              </a>
+            {% else %}
+              {# Student or guest — use fetch-based enroll #}
+              <button class="btn-enroll-cat"
+                      data-id="{{ course.id }}"
+                      data-title="{{ course.title|escapejs }}">
+                Enroll Now <i class="fas fa-arrow-right"></i>
+              </button>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <div class="text-center py-5 bg-white rounded-4 shadow-sm">
+    <div style="font-size:48px; margin-bottom:16px;">📭</div>
+    <h5 class="fw-bold mb-2">No courses in this category yet</h5>
+    <p class="text-muted">Check back soon or browse all courses.</p>
+    <a href="{% url 'index' %}" class="btn btn-primary rounded-pill px-4 mt-2">
+      Browse All Courses
+    </a>
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
+
+
+{% block extra_js %}
+<script>
+/* ── Enroll button handler (fetch-based, never navigates directly) ── */
+document.querySelectorAll('.btn-enroll-cat[data-id]').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var courseId    = this.dataset.id;
+    var courseTitle = this.dataset.title || 'this course';
+    var self        = this;
+    var origHTML    = this.innerHTML;
+
+    /* Spinner */
+    self.innerHTML = '<span class="spin"></span> Wait...';
+    self.disabled  = true;
+
+    fetch('/enroll/' + courseId + '/', {
+      method:  'GET',
+      headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+    .then(function(r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+
+      if (data.status === 'login_required') {
+        /* Not logged in → go to login page */
+        window.location.href = data.login_url || ('/login/?next=/enroll/' + courseId + '/');
+
+      } else if (data.status === 'payment_required') {
+        /* Go to payment page */
+        window.location.href = data.payment_url || ('/payment/' + data.enrollment_id + '/');
+
+      } else if (data.status === 'already_enrolled') {
+        /* Already enrolled → ask to go to player */
+        if (confirm('You are already enrolled in "' + courseTitle + '"!\nGo to the course player?')) {
+          window.location.href = data.player_url || '/my-courses/';
+        } else {
+          self.innerHTML = origHTML;
+          self.disabled  = false;
+        }
+
+      } else if (data.status === 'error') {
+        alert(data.message || 'Something went wrong. Please try again.');
+        self.innerHTML = origHTML;
+        self.disabled  = false;
+
+      } else {
+        self.innerHTML = origHTML;
+        self.disabled  = false;
+      }
+    })
+    .catch(function(err) {
+      console.error('Enroll error:', err);
+      alert('Connection error. Please refresh the page and try again.');
+      self.innerHTML = origHTML;
+      self.disabled  = false;
+    });
+  });
+});
+</script>
+{% endblock %}

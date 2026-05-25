@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load course_extras %}
+
+{% block title %}{{ course.title }} Exam — Teachvion{% endblock %}
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+<!-- Top Bar -->
+<div class="exam-topbar">
+  <div class="container d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div>
+      <div style="font-size:13px; color:#888; font-weight:600;">{{ course.title }}</div>
+      <div style="font-size:13px; color:#555;">{{ questions|length }} questions</div>
+    </div>
+    <div class="text-center">
+      <div style="font-size:11px; color:#888; text-transform:uppercase; letter-spacing:.5px;">Time Remaining</div>
+      <div class="timer" id="timer">30:00</div>
+    </div>
+    <div style="font-size:13px; color:#555;" id="answered-count">0 / {{ questions|length }} answered</div>
+  </div>
+</div>
+
+<div class="container my-4">
+  <div class="row g-4">
+    <!-- Questions -->
+    <div class="col-lg-8">
+      <form method="post" action="{% url 'take_exam' course.id %}" id="examForm">
+        {% csrf_token %}
+        {% for question in questions %}
+<div class="question-card" id="q-{{ forloop.counter }}" style="{% if not forloop.first %}display:none;{% endif %}">          <div class="q-number">Question {{ forloop.counter }} of {{ questions|length }}</div>
+          <div class="q-text">{{ question.text }}</div>
+
+          {% for opt_key, opt_val in question.get_options.items %}
+          <button type="button"
+            class="option-btn"
+            data-q="{{ question.id }}"
+            data-opt="{{ opt_key }}"
+            onclick="selectOption(this, {{ question.id }}, '{{ opt_key }}')">
+            <span class="opt-letter">{{ opt_key|upper }}</span>
+            {{ opt_val }}
+          </button>
+          <input type="radio" name="q_{{ question.id }}" value="{{ opt_key }}" id="r_{{ question.id }}_{{ opt_key }}" style="display:none;">
+          {% endfor %}
+
+          <div class="nav-btns">
+            {% if not forloop.first %}
+            <button type="button" class="btn-nav" onclick="goTo({{ forloop.counter|add:'-1' }})">← Previous</button>
+            {% else %}
+            <div></div>
+            {% endif %}
+
+            {% if not forloop.last %}
+            <button type="button" class="btn-nav" onclick="goTo({{ forloop.counter|add:'1' }})">Next →</button>
+            {% else %}
+            <button type="button" class="btn-submit" onclick="submitExam()">Submit Exam 📝</button>
+            {% endif %}
+          </div>
+        </div>
+        {% endfor %}
+      </form>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+      <div class="sidebar-card">
+        <h6 class="fw-bold mb-3" style="font-size:14px; color:#1a2c3e;">Question Navigator</h6>
+        <div class="progress-dots mb-3" id="navDots">
+          {% for question in questions %}
+          <div class="dot {% if forloop.first %}current{% endif %}"
+               id="dot-{{ forloop.counter }}"
+               onclick="goTo({{ forloop.counter }})"
+               title="Q{{ forloop.counter }}"> 
+            {{ forloop.counter }}
+          </div>
+          {% endfor %}
+        </div>
+        <div style="font-size:12px; color:#888; margin-top:10px; padding-top:10px; border-top:1px solid #f0f0f0;">
+          <span style="display:inline-flex;align-items:center;gap:4px;margin-right:10px;">
+            <span style="width:12px;height:12px;border-radius:50%;background:#5a67d8;display:inline-block;"></span>Answered
+          </span>
+          <span style="display:inline-flex;align-items:center;gap:4px;">
+            <span style="width:12px;height:12px;border-radius:50%;background:#e9ecef;border:2px solid #dee2e6;display:inline-block;"></span>Unanswered
+          </span>
+        </div>
+        <div class="mt-3">
+          <div style="background:#e9ecef; border-radius:10px; height:6px;">
+            <div id="progressBar" style="width:0%; background:linear-gradient(90deg,#1f6392,#2d6a4f); height:6px; border-radius:10px; transition:.3s;"></div>
+          </div>
+          <div style="font-size:12px; color:#888; margin-top:6px;" id="progressText">0% completed</div>
+        </div>
+        <button type="button" class="btn w-100 mt-3 rounded-pill fw-bold" style="background:#2c6e3c;color:white;font-size:14px;" onclick="submitExam()">
+          Submit Exam
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Confirm modal -->
+<div id="confirmOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:9999; align-items:center; justify-content:center; min-height:400px;">
+  <div style="background:white; border-radius:20px; padding:36px; text-align:center; max-width:400px; width:90%;">
+    <div style="font-size:40px; margin-bottom:12px;">📋</div>
+    <h5 class="fw-bold mb-2">Submit Exam?</h5>
+    <p class="text-muted" style="font-size:14px;" id="submitMsg">You have answered 0 out of {{ questions|length }} questions.</p>
+    <div class="d-flex gap-3 justify-content-center mt-4">
+      <button onclick="document.getElementById('confirmOverlay').style.display='none'" class="btn btn-outline-secondary rounded-pill px-4">Review</button>
+      <button onclick="document.getElementById('examForm').submit()" class="btn rounded-pill px-4 fw-bold" style="background:#2c6e3c;color:white;">Submit</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let current = 1;
+const total = {{ questions|length }};
+let answered = {};
+let timeLeft = 30 * 60;
+
+function goTo(n) {
+  document.getElementById('q-' + current).style.display = 'none';
+  document.getElementById('dot-' + current).classList.remove('current');
+  current = n;
+  document.getElementById('q-' + current).style.display = 'block';
+  document.getElementById('dot-' + current).classList.add('current');
+  window.scrollTo({top: 60, behavior:'smooth'});
+}
+
+function selectOption(btn, qId, opt) {
+  btn.closest('.question-card').querySelectorAll('.option-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  document.getElementById('r_' + qId + '_' + opt).checked = true;
+  answered[qId] = opt;
+  const dot = document.getElementById('dot-' + current);
+  dot.classList.add('answered');
+  updateProgress();
+}
+
+function updateProgress() {
+  const count = Object.keys(answered).length;
+  document.getElementById('answered-count').textContent = count + ' / ' + total + ' answered';
+  const pct = Math.round((count / total) * 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = pct + '% completed';
+}
+
+function submitExam() {
+  const count = Object.keys(answered).length;
+  document.getElementById('submitMsg').textContent = 'You have answered ' + count + ' out of ' + total + ' questions.';
+  const overlay = document.getElementById('confirmOverlay');
+  overlay.style.display = 'flex';
+}
+
+// Timer
+const timerEl = document.getElementById('timer');
+const interval = setInterval(() => {
+  timeLeft--;
+  if (timeLeft <= 0) { clearInterval(interval); document.getElementById('examForm').submit(); return; }
+  const m = Math.floor(timeLeft / 60).toString().padStart(2,'0');
+  const s = (timeLeft % 60).toString().padStart(2,'0');
+  timerEl.textContent = m + ':' + s;
+  if (timeLeft <= 300) timerEl.classList.add('warning');
+}, 1000);
+</script>
+{% endblock %}

@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}My Certificates — Teachvion{% endblock %}
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+<div class="cert-hero">
+  <div style="font-size:48px; margin-bottom:12px;">🏆</div>
+  <h2 class="fw-bold">My Certificates</h2>
+  <p style="opacity:.8; font-size:15px; margin-top:6px;">{{ certificates|length }} certificate{% if certificates|length != 1 %}s{% endif %} earned</p>
+</div>
+
+<div class="container my-4">
+  {% if certificates %}
+  <div class="row g-4">
+    {% for cert in certificates %}
+    <div class="col-md-6 col-lg-4">
+      <div class="cert-card">
+        <div class="d-flex align-items-start gap-3 mb-3">
+          <div class="cert-icon">🎓</div>
+          <div style="flex:1;">
+            <h6 class="fw-bold mb-1" style="font-size:15px;">{{ cert.course.title }}</h6>
+            <div class="cert-number">{{ cert.certificate_number }}</div>
+          </div>
+        </div>
+
+        {% if cert.exam_attempt %}
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div style="flex:1; background:#e9ecef; border-radius:10px; height:8px;">
+            <div style="width:{{ cert.exam_attempt.percentage|floatformat:0 }}%; background:linear-gradient(90deg,#2d6a4f,#5a67d8); height:8px; border-radius:10px;"></div>
+          </div>
+          <div style="font-size:14px; font-weight:700; color:#2d6a4f;">{{ cert.exam_attempt.percentage|floatformat:1 }}%</div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex justify-content-between align-items-center mb-3" style="font-size:13px; color:#888;">
+          <span><i class="fas fa-calendar me-1"></i>{{ cert.issued_at|date:"d M Y" }}</span>
+          <span class="delivery-chip d-{{ cert.delivery_method }}">
+            {% if cert.delivery_method == 'digital' %}📱 Digital
+            {% elif cert.delivery_method == 'pdf' %}📄 PDF
+            {% else %}📮 Postal
+            {% endif %}
+          </span>
+        </div>
+
+        {% if cert.exam_attempt and cert.exam_attempt.eligible_for_partner %}
+        <div style="background:#fef9c3; border-radius:10px; padding:8px 12px; margin-bottom:12px; font-size:12px; font-weight:600; color:#854d0e;">
+          🤝 Partner companies unlocked!
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'certificate_detail' cert.id %}" class="btn btn-sm btn-primary rounded-pill">View</a>
+          <a href="{% url 'certificate_pdf' cert.id %}" class="btn btn-sm btn-outline-danger rounded-pill">PDF</a>
+          <a href="{% url 'certificate_delivery' cert.id %}" class="btn btn-sm btn-outline-secondary rounded-pill">Delivery</a>
+          {% if cert.exam_attempt and cert.exam_attempt.eligible_for_partner %}
+          <a href="{% url 'partner_companies' cert.course.id %}" class="btn btn-sm btn-outline-success rounded-pill">Partners</a>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="empty-box">
+    <div style="font-size:56px; margin-bottom:16px;">📜</div>
+    <h5 class="fw-bold mb-2">No certificates yet</h5>
+    <p class="text-muted mb-4">Complete a course and pass the exam with 50%+ to earn your first certificate.</p>
+    <a href="{% url 'my_courses' %}" class="btn btn-primary rounded-pill px-4 me-2">Go to My Courses</a>
+    <a href="{% url 'index' %}" class="btn btn-outline-secondary rounded-pill px-4">Browse Courses</a>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

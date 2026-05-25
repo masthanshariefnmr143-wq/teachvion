@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load course_extras %}
+{% block title %}Exam Hub — Teachvion{% endblock %}
+
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+<div class="exam-header">
+  <h2 class="fw-bold">📚 Skill Mastery Exams</h2>
+  <p style="opacity:.8; font-size:15px; margin-top:6px;">Test your knowledge with real-world questions</p>
+</div>
+
+<div class="container my-4">
+  <!-- Course Filter -->
+  <div class="course-filter" id="courseFilter">
+    <button class="course-btn active" data-course="all">📌 All Courses</button>
+    {% for course in courses %}
+    <button class="course-btn" data-course="{{ course.id }}">{{ course.title|truncatechars:20 }}</button>
+    {% endfor %}
+  </div>
+
+  <!-- Exam Grid -->
+  <div id="examGrid">
+    {% for course in courses %}
+    <div class="exam-card" data-course-card="{{ course.id }}">
+      <div class="exam-card-header">
+        <div>
+          <h5 class="fw-bold mb-1">{{ course.title }}</h5>
+          <span class="course-badge-pill">{{ course.get_category_display }}</span>
+          <span class="course-badge-pill ms-1">{{ course.questions.count }} questions</span>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+          {% if my_attempts|get_item:course.id %}
+            {% with attempt=my_attempts|get_item:course.id %}
+            <span class="badge {% if attempt.passed %}bg-success{% else %}bg-danger{% endif %} rounded-pill">
+              Last: {{ attempt.percentage|floatformat:0 }}%
+            </span>
+            {% endwith %}
+          {% endif %}
+          <a href="{% url 'take_exam' course.id %}" class="btn btn-sm btn-primary rounded-pill px-3">
+            {% if my_attempts|get_item:course.id %}Retake Exam{% else %}Start Exam{% endif %}
+          </a>
+        </div>
+      </div>
+      <!-- Preview first 2 questions -->
+      {% for question in course.questions.all|slice:":2" %}
+      <div class="question-item">
+        <div class="question-text">{{ forloop.counter }}. {{ question.text }}</div>
+        <div class="options">
+          <label class="option-label"><input type="radio" disabled> {{ question.option_a }}</label>
+          <label class="option-label"><input type="radio" disabled> {{ question.option_b }}</label>
+          <label class="option-label"><input type="radio" disabled> {{ question.option_c }}</label>
+          <label class="option-label"><input type="radio" disabled> {{ question.option_d }}</label>
+        </div>
+      </div>
+      {% endfor %}
+      {% if course.questions.count > 2 %}
+      <div style="padding:10px 22px; font-size:13px; color:#888;">
+        + {{ course.questions.count|add:"-2" }} more questions — <a href="{% url 'take_exam' course.id %}">Start exam to answer all</a>
+      </div>
+      {% endif %}
+    </div>
+    {% empty %}
+    <div class="text-center py-5 bg-white rounded-4 shadow-sm">
+      <div style="font-size:48px; margin-bottom:12px;">📝</div>
+      <h5>No exams available yet</h5>
+      <p class="text-muted">Complete a course to unlock its exam.</p>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.querySelectorAll('.course-btn').forEach(btn => {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.course-btn').forEach(b => b.classList.remove('active'));
+    this.classList.add('active');
+    const id = this.dataset.course;
+    document.querySelectorAll('[data-course-card]').forEach(card => {
+      card.style.display = (id === 'all' || card.dataset.courseCard === id) ? 'block' : 'none';
+    });
+  });
+});
+</script>
+{% endblock %}

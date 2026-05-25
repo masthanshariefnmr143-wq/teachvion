@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block title %}My Profile — Teachvion{% endblock %}
+{% block extra_style %}
+
+{% endblock %}
+{% block content %}
+<div class="container" style="max-width:600px; margin-top:40px;">
+  <h4 class="fw-bold mb-4">My Profile</h4>
+  <div class="profile-card">
+    <div class="text-center mb-4">
+      {% if user.profile_pic %}
+        <img src="{{ user.profile_pic.url }}" class="rounded-circle" width="90" height="90" style="object-fit:cover;">
+      {% else %}
+        <div class="avatar-large">{{ user.first_name|first|upper }}{{ user.last_name|first|upper }}</div>
+      {% endif %}
+      <h5 class="fw-bold mb-1">{{ user.get_full_name }}</h5>
+      <span class="badge" style="background:#eef2ff; color:#5a67d8; border-radius:20px; padding:4px 14px;">{{ user.role|capfirst }}</span>
+    </div>
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:13px;">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div class="text-danger" style="font-size:12px;">{{ field.errors.0 }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      <button type="submit" class="btn w-100 rounded-pill fw-bold" style="background:linear-gradient(135deg,#5a67d8,#7b4bb7);color:white;">
+        Save Changes
+      </button>
+    </form>
+    <div class="text-center mt-3">
+      <a href="{{ user.get_dashboard_url }}" class="text-muted" style="font-size:13px;">← Back to Dashboard</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,350 @@
+{% extends 'base.html' %}
+{% load static course_extras %}
+{% block title %}{{ course.title }} — Teachvion{% endblock %}
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+
+{# ── All URLs and config stored in data attributes — NO Django tags inside JS ── #}
+<div id="playerConfig"
+     data-lesson-id="{% if current_lesson %}{{ current_lesson.id }}{% else %}0{% endif %}"
+     data-progress-url="{% if current_lesson %}/lesson/{{ current_lesson.id }}/progress/{% else %}{% endif %}"
+     data-csrf="{{ csrf_token }}"
+     data-completion="{{ completion_pct }}"
+     data-exam-url="{% url 'take_exam' course.id %}"
+     data-course-id="{{ course.id }}"
+     style="display:none;">
+</div>
+
+<div class="player-layout">
+
+  {# ══════════════════════════════
+     SIDEBAR — Lesson List
+  ══════════════════════════════ #}
+  <div class="sidebar">
+
+    <div class="sidebar-header">
+      <div class="course-label">Now Playing</div>
+      <h5>{{ course.title }}</h5>
+    </div>
+
+    {# Progress bar #}
+    <div class="progress-wrap">
+      <div class="d-flex justify-content-between mb-1">
+        <span style="font-size:12px; color:#94a3b8;">Course Progress</span>
+        <span style="font-size:12px; color:#5a67d8; font-weight:700;" id="progressLabel">{{ completion_pct }}%</span>
+      </div>
+      <div class="prog-bar-bg">
+        <div class="prog-bar-fill" id="sidebarProgressBar" style="width:{{ completion_pct }}%;"></div>
+      </div>
+    </div>
+
+    {# Lesson list #}
+    <div class="lesson-list">
+      {% for lesson in lessons %}
+      <a href="/course/{{ course.id }}/player/?lesson={{ lesson.id }}"
+         class="lesson-item {% if current_lesson and lesson.id == current_lesson.id %}active{% endif %}{% with vp=progress_map|get_item:lesson.id %}{% if vp and vp.completed %} done{% endif %}{% endwith %}">
+
+        <div class="lesson-num">
+          {% with vp=progress_map|get_item:lesson.id %}
+            {% if vp and vp.completed %}✓{% else %}{{ forloop.counter }}{% endif %}
+          {% endwith %}
+        </div>
+
+        <div style="flex:1; min-width:0;">
+          <div class="lesson-title">{{ lesson.title }}</div>
+          <div class="lesson-chips">
+            {% if lesson.duration_mins %}
+              <span class="lc" style="background:#1e3a5f; color:#93c5fd;">{{ lesson.duration_mins }}m</span>
+            {% endif %}
+            {% if lesson.video_file %}<span class="lc lc-vid">VID</span>{% endif %}
+            {% if lesson.video_url  %}<span class="lc lc-url">URL</span>{% endif %}
+            {% if lesson.pdf_file   %}<span class="lc lc-pdf">PDF</span>{% endif %}
+            {% if lesson.notes      %}<span class="lc lc-note">NOTE</span>{% endif %}
+          </div>
+        </div>
+
+      </a>
+      {% empty %}
+      <div style="padding:20px; color:#64748b; text-align:center; font-size:13px;">
+        No lessons added yet.
+      </div>
+      {% endfor %}
+    </div>
+
+    {# Exam CTA (visible when all lessons done) #}
+    {% if can_take_exam %}
+    <div class="sidebar-exam-btn">
+      <a href="{% url 'take_exam' course.id %}">📝 Take Exam Now</a>
+    </div>
+    {% endif %}
+  </div>
+
+  {# ══════════════════════════════
+     MAIN AREA — Video + Content
+  ══════════════════════════════ #}
+  <div class="main-area" id="mainArea">
+
+    {% if current_lesson %}
+
+      {# ── Video ── #}
+      <div class="video-wrap">
+        {% if current_lesson.video_file %}
+          {# Uploaded video — progress tracked via ontimeupdate #}
+          <video
+            controls
+            id="lessonVideo"
+            preload="metadata"
+            style="width:100%; max-height:58vh; display:block; background:black;">
+            <source src="{{ current_lesson.video_file.url }}">
+            Your browser does not support the video tag.
+          </video>
+
+        {% elif current_lesson.video_url %}
+          {# YouTube / Vimeo embed #}
+          <iframe
+            src="{{ current_lesson.video_url }}"
+            id="lessonIframe"
+            style="width:100%; height:58vh; border:none; display:block;"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowfullscreen>
+          </iframe>
+
+        {% else %}
+          <div class="no-video">
+            <i class="fas fa-video-slash fa-2x mb-3"></i>
+            <p style="margin:0; font-size:14px;">No video for this lesson</p>
+          </div>
+        {% endif %}
+      </div>
+
+      <div class="player-debug" style="display:none;">
+        Debug source:
+        {% if current_lesson.video_url %}
+          URL={{ current_lesson.video_url }}
+        {% endif %}
+        {% if current_lesson.video_file %}
+          FILE={{ current_lesson.video_file.url }}
+        {% endif %}
+      </div>
+
+      {# ── Tabs ── #}
+      <div class="content-tabs">
+        <button class="content-tab active" onclick="switchTab(this,'tab-overview')">
+          <i class="fas fa-info-circle me-1"></i>Overview
+        </button>
+        {% if current_lesson.pdf_file %}
+        <button class="content-tab" onclick="switchTab(this,'tab-pdf')">
+          <i class="fas fa-file-pdf me-1"></i>PDF
+        </button>
+        {% endif %}
+        {% if current_lesson.notes %}
+        <button class="content-tab" onclick="switchTab(this,'tab-notes')">
+          <i class="fas fa-sticky-note me-1"></i>Notes
+        </button>
+        {% endif %}
+      </div>
+
+      {# ── Overview tab ── #}
+      <div class="tab-panel active" id="tab-overview">
+        <h4>{{ current_lesson.title }}</h4>
+        <p>
+          {% if current_lesson.duration_mins %}
+            <i class="fas fa-clock me-1"></i>{{ current_lesson.duration_mins }} minutes &nbsp;·&nbsp;
+          {% endif %}
+          Lesson
+          {% for l in lessons %}{% if l.id == current_lesson.id %}{{ forloop.counter }}{% endif %}{% endfor %}
+          of {{ lessons|length }}
+        </p>
+
+        {% if current_lesson.video_file %}
+        <div class="d-flex align-items-center gap-2 mb-3">
+          <small style="color:#64748b; font-size:12px;">Watched:</small>
+          <div class="inline-progress" style="flex:1;">
+            <div class="inline-progress-fill" id="videoProgressInline"
+                 style="width:{% with vp=progress_map|get_item:current_lesson.id %}{% if vp %}{{ vp.watched_percent }}{% else %}0{% endif %}{% endwith %}%;">
+            </div>
+          </div>
+          <small style="color:#5a67d8; font-size:12px; font-weight:600;" id="videoProgressPct">{% with vp=progress_map|get_item:current_lesson.id %}{% if vp %}{{ vp.watched_percent }}{% else %}0{% endif %}{% endwith %}%</small>
+        </div>
+        {% endif %}
+
+        {% if can_take_exam %}
+        <div class="exam-unlock-box">
+          <div style="font-size:36px; margin-bottom:6px;">🎉</div>
+          <h5>Course Complete!</h5>
+          <p>You've finished all lessons. Take the exam to earn your certificate.</p>
+          <a href="{% url 'take_exam' course.id %}">
+            <i class="fas fa-pen me-1"></i>Start Exam
+          </a>
+        </div>
+        {% elif completion_pct > 0 %}
+        <div style="background:#1e293b; border-radius:12px; padding:14px 16px; font-size:13px; color:#94a3b8;">
+          <i class="fas fa-chart-bar me-1" style="color:#5a67d8;"></i>
+          Course completion: <strong style="color:#5a67d8;">{{ completion_pct }}%</strong> — 
+          complete all lessons to unlock the exam.
+        </div>
+        {% endif %}
+
+        <div class="d-flex gap-2 mt-4 flex-wrap">
+          <a href="{% url 'student_dashboard' %}" class="btn btn-outline-secondary rounded-pill btn-sm">
+            <i class="fas fa-th-large me-1"></i>Dashboard
+          </a>
+          <a href="{% url 'my_courses' %}" class="btn btn-outline-secondary rounded-pill btn-sm">
+            <i class="fas fa-book me-1"></i>My Courses
+          </a>
+          {% if can_take_exam %}
+          <a href="{% url 'take_exam' course.id %}" class="btn btn-success rounded-pill btn-sm">
+            <i class="fas fa-pen me-1"></i>Take Exam
+          </a>
+          {% endif %}
+        </div>
+      </div>
+
+      {# ── PDF tab ── #}
+      {% if current_lesson.pdf_file %}
+      <div class="tab-panel" id="tab-pdf">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h6 style="color:white; margin:0; font-weight:700;">
+            <i class="fas fa-file-pdf me-2 text-danger"></i>PDF Resource
+          </h6>
+          <a href="{{ current_lesson.pdf_file.url }}" download
+             class="btn btn-sm btn-outline-light rounded-pill">
+            <i class="fas fa-download me-1"></i>Download
+          </a>
+        </div>
+        <iframe
+          src="{{ current_lesson.pdf_file.url }}"
+          style="width:100%; height:70vh; border-radius:10px; border:1px solid #334155;">
+        </iframe>
+      </div>
+      {% endif %}
+
+      {# ── Notes tab ── #}
+      {% if current_lesson.notes %}
+      <div class="tab-panel" id="tab-notes">
+        <h6 style="color:white; margin-bottom:14px; font-weight:700;">
+          <i class="fas fa-sticky-note me-2 text-warning"></i>Lesson Notes
+        </h6>
+        <div class="notes-content">{{ current_lesson.notes }}</div>
+      </div>
+      {% endif %}
+
+    {% else %}
+      {# No lessons yet #}
+      <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#64748b; padding:60px 20px;">
+        <i class="fas fa-book-open fa-3x mb-3"></i>
+        <h5 style="color:#94a3b8;">No lessons available yet</h5>
+        <p style="font-size:14px; margin-top:6px;">The trainer hasn't uploaded any lessons for this course yet.</p>
+        <a href="{% url 'index' %}" class="btn btn-outline-light rounded-pill mt-3 px-4">
+          Browse Other Courses
+        </a>
+      </div>
+    {% endif %}
+
+  </div>{# end .main-area #}
+
+</div>{# end .player-layout #}
+{% endblock %}
+
+
+{% block extra_js %}
+{# ALL Django tags are in data attributes above — zero template tags in JS below #}
+<script>
+(function() {
+  /* ── Read config from data attributes ── */
+  const cfg          = document.getElementById('playerConfig').dataset;
+  const LESSON_ID    = cfg.lessonId;
+  const PROGRESS_URL = cfg.progressUrl;      // e.g. /lesson/5/progress/
+  const CSRF         = cfg.csrf;
+  const EXAM_URL     = cfg.examUrl;
+
+  console.info('Course player loaded', {
+    lessonId: LESSON_ID,
+    progressUrl: PROGRESS_URL,
+    examUrl: EXAM_URL,
+    videoUrl: '{% if current_lesson %}{{ current_lesson.video_url|default:"" }}{% endif %}',
+    videoFileUrl: '{% if current_lesson and current_lesson.video_file %}{{ current_lesson.video_file.url }}{% endif %}'
+  });
+
+  /* ── Tab switching ── */
+  window.switchTab = function(btn, tabId) {
+    document.querySelectorAll('.content-tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+  };
+
+  /* ── Send progress to Django via POST ── */
+  function sendProgress(percent) {
+    if (!PROGRESS_URL || !LESSON_ID || LESSON_ID === '0') return;
+
+    fetch(PROGRESS_URL, {
+      method:  'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken':  CSRF,
+      },
+      body: JSON.stringify({ percent: percent }),
+    })
+    .then(r => r.json())
+    .then(data => {
+      /* Update inline progress bar */
+      const bar = document.getElementById('videoProgressInline');
+      const pct = document.getElementById('videoProgressPct');
+      if (bar) bar.style.width = percent + '%';
+      if (pct) pct.textContent = percent + '%';
+
+      /* If lesson is now complete, update sidebar dot color */
+      if (data.completed) {
+        const lessonLinks = document.querySelectorAll('.lesson-item');
+        lessonLinks.forEach(link => {
+          if (link.href && link.href.includes('lesson=' + LESSON_ID)) {
+            link.classList.add('done');
+            const num = link.querySelector('.lesson-num');
+            if (num) num.textContent = '✓';
+          }
+        });
+      }
+    })
+    .catch(err => console.warn('Progress update failed:', err));
+  }
+
+  /* ── Track uploaded video (timeupdate event) ── */
+  let lastSentPct = 0;
+
+  const video = document.getElementById('lessonVideo');
+  if (video) {
+    video.addEventListener('timeupdate', function() {
+      if (!this.duration) return;
+      const pct = Math.floor((this.currentTime / this.duration) * 100);
+
+      /* Send every 10% milestone, and at 100% */
+      if (pct >= lastSentPct + 10 || (pct === 100 && lastSentPct < 100)) {
+        lastSentPct = pct;
+        sendProgress(pct);
+      }
+    });
+
+    /* Also send on video end */
+    video.addEventListener('ended', function() {
+      lastSentPct = 100;
+      sendProgress(100);
+    });
+  }
+
+  /* ── Track iframe / URL videos ── */
+  /* For YouTube embeds we can't get timeupdate,
+     so mark as 100% after 5 seconds of the page being open */
+  const iframe = document.getElementById('lessonIframe');
+  if (iframe && PROGRESS_URL) {
+    // Mark iframe lessons as watched after 5 seconds on the page.
+    setTimeout(function() { sendProgress(100); }, 5000);
+  }
+
+})();
+</script>
+{% endblock %}

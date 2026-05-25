@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+{% block title %}Partner Companies — Teachvion{% endblock %}
+
+{% block extra_style %}
+
+{% endblock %}
+
+{% block content %}
+<div class="partner-hero">
+  <div style="font-size:48px; margin-bottom:12px;">🤝</div>
+  <h2 class="fw-bold">Partner Companies</h2>
+  <p style="opacity:.8; font-size:15px; margin-top:6px;">Congratulations! Your score qualifies you for these opportunities</p>
+  <div class="score-badge">
+    {{ attempt.course.title }} &nbsp;|&nbsp; Score: {{ attempt.percentage|floatformat:1 }}% &nbsp;|&nbsp; ✅ Qualified
+  </div>
+</div>
+
+<div class="container my-4">
+  <div class="unlock-banner">
+    <div style="font-size:36px;">🏆</div>
+    <div>
+      <h5 class="fw-bold mb-1">You unlocked partner placements!</h5>
+      <p class="mb-0" style="opacity:.85; font-size:14px;">
+        You scored <strong>{{ attempt.percentage|floatformat:1 }}%</strong> on <strong>{{ course.title }}</strong>.
+        These companies are actively hiring candidates with your skills.
+      </p>
+    </div>
+  </div>
+
+  {% if partners %}
+  <div class="row g-4">
+    {% for partner in partners %}
+    <div class="col-md-6 col-lg-4">
+      <div class="partner-card">
+        <div class="partner-logo">
+          {% if partner.logo %}
+            <img src="{{ partner.logo.url }}" alt="{{ partner.name }}">
+          {% else %}
+            🏢
+          {% endif %}
+        </div>
+        <h5 class="fw-bold mb-1">{{ partner.name }}</h5>
+        {% if partner.description %}
+        <p class="text-muted mb-2" style="font-size:14px;">{{ partner.description }}</p>
+        {% endif %}
+        <div style="font-size:13px; color:#2d6a4f; font-weight:600; margin-bottom:6px;">
+          <i class="fas fa-check-circle me-1"></i>Min. score required: {{ partner.min_score_required }}%
+        </div>
+        <div style="font-size:13px; color:#5a67d8; font-weight:600;">
+          <i class="fas fa-star me-1"></i>Your score: {{ attempt.percentage|floatformat:1 }}% ✓
+        </div>
+        <a href="{{ partner.job_link }}" target="_blank" class="apply-btn">
+          <i class="fas fa-external-link-alt me-1"></i>View Job Openings
+        </a>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+  {% else %}
+  <div class="text-center py-5 bg-white rounded-4 shadow-sm">
+    <div style="font-size:48px; margin-bottom:12px;">🔍</div>
+    <h5>No partner companies yet</h5>
+    <p class="text-muted">Check back soon — we're adding new hiring partners.</p>
+  </div>
+  {% endif %}
+
+  <div class="text-center mt-4 d-flex gap-3 justify-content-center flex-wrap">
+    <a href="{% url 'certificate_detail' attempt.certificate.id %}" class="btn btn-success rounded-pill px-4 fw-bold">
+      <i class="fas fa-certificate me-1"></i>View Your Certificate
+    </a>
+    <a href="{% url 'student_dashboard' %}" class="btn btn-outline-primary rounded-pill px-4">
+      ← Dashboard
+    </a>
+  </div>
+</div>
+{% endblock %}

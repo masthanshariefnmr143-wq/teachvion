@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% block title %}Exam Result — Teachvion{% endblock %}
+{% load course_extras %}
+{% block extra_style %}
+
+{% endblock %}
+{% block content %}
+<div class="result-hero">
+  <div class="score-circle">
+    <div class="score-num">{{ attempt.percentage|floatformat:0 }}%</div>
+    <div class="score-label">Score</div>
+  </div>
+  <h2 class="fw-bold">{% if attempt.passed %}🎉 Congratulations!{% else %}😔 Keep Trying!{% endif %}</h2>
+  <p class="opacity-85 mb-1">{{ attempt.score }} / {{ attempt.total_questions }} correct answers</p>
+  <p class="opacity-70" style="font-size:14px;">{{ course.title }}</p>
+  {% if attempt.passed %}<span style="background:rgba(255,255,255,.2); padding:4px 16px; border-radius:20px; font-size:13px;">✅ You passed! Certificate issued.</span>{% endif %}
+  {% if attempt.eligible_for_partner %}<span style="background:rgba(255,255,255,.2); padding:4px 16px; border-radius:20px; font-size:13px; margin-left:8px;">🤝 Partner companies unlocked!</span>{% endif %}
+</div>
+
+<div class="container my-4">
+  <div class="row g-4">
+    <div class="col-lg-8">
+
+      <!-- Certificate Section -->
+      {% if certificate %}
+      <div class="result-card" style="border-left:4px solid #2d6a4f;">
+        <h5 class="fw-bold mb-3"><i class="fas fa-certificate me-2 text-success"></i>Your Certificate</h5>
+        <p class="text-muted" style="font-size:14px;">Certificate No: <strong>{{ certificate.certificate_number }}</strong> | Issued: {{ certificate.issued_at|date:"d M Y" }}</p>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="{% url 'certificate_detail' certificate.id %}" class="btn btn-success rounded-pill px-3">
+            <i class="fas fa-eye me-1"></i>View Certificate
+          </a>
+          <a href="{% url 'certificate_pdf' certificate.id %}" class="btn btn-outline-danger rounded-pill px-3">
+            <i class="fas fa-file-pdf me-1"></i>Download PDF
+          </a>
+          <a href="{% url 'certificate_delivery' certificate.id %}" class="btn btn-outline-primary rounded-pill px-3">
+            <i class="fas fa-truck me-1"></i>Choose Delivery
+          </a>
+        </div>
+      </div>
+      {% elif not attempt.passed %}
+      <div class="result-card" style="border-left:4px solid #dc2626;">
+        <h5 class="fw-bold mb-2">Need 50% to pass</h5>
+        <p class="text-muted" style="font-size:14px;">You scored {{ attempt.percentage|floatformat:1 }}%. Review the course and try again.</p>
+        <a href="{% url 'course_player' course.id %}" class="btn btn-primary rounded-pill px-3">
+          <i class="fas fa-redo me-1"></i>Review Course
+        </a>
+      </div>
+      {% endif %}
+
+      <!-- Answers Review -->
+      <div class="result-card">
+        <h5 class="fw-bold mb-3"><i class="fas fa-clipboard-list me-2 text-primary"></i>Answer Review</h5>
+        {% for ans in answers %}
+        <div class="answer-item">
+          <div class="fw-semibold mb-1">{{ forloop.counter }}. {{ ans.question.text }}</div>
+          <div class="{% if ans.is_correct %}answer-correct{% else %}answer-wrong{% endif %}">
+            {% if ans.is_correct %}<i class="fas fa-check-circle me-1"></i>{% else %}<i class="fas fa-times-circle me-1"></i>{% endif %}
+            Your answer: {{ ans.question.get_options|get_item:ans.selected_option|default:"Not answered" }}
+          </div>
+          {% if not ans.is_correct %}
+          <div class="answer-correct" style="font-size:13px;">
+            <i class="fas fa-lightbulb me-1"></i>Correct: {{ ans.question.get_options|get_item:ans.question.correct_option }}
+          </div>
+          {% endif %}
+        </div>
+        {% empty %}
+        <p class="text-muted">No answers recorded.</p>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- SIDEBAR -->
+    <div class="col-lg-4">
+      <div class="result-card">
+        <h6 class="fw-bold mb-3">Actions</h6>
+        <a href="{% url 'student_dashboard' %}" class="btn w-100 btn-outline-primary rounded-pill mb-2">← My Dashboard</a>
+        <a href="{% url 'course_player' course.id %}" class="btn w-100 btn-outline-secondary rounded-pill mb-2">📺 Course Player</a>
+        {% if attempt.passed %}
+        <a href="{% url 'take_exam' course.id %}" class="btn w-100 btn-outline-warning rounded-pill">🔄 Retake Exam</a>
+        {% endif %}
+      </div>
+
+      {% if partner_companies %}
+      <div class="mt-3">
+        <h6 class="fw-bold mb-3">🤝 Partner Companies (≥70%)</h6>
+        {% for p in partner_companies %}
+        <div class="partner-card mb-3">
+          {% if p.logo %}<img src="{{ p.logo.url }}" height="40" class="mb-2">{% endif %}
+          <h6 class="fw-bold mb-1">{{ p.name }}</h6>
+          <p style="font-size:12px; color:#888;" class="mb-2">{{ p.description }}</p>
+          <a href="{{ p.job_link }}" target="_blank" class="btn btn-sm btn-primary rounded-pill">View Jobs</a>
+        </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

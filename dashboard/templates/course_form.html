@@ -1,0 +1,23 @@
+{% extends 'base.html' %}
+{% block title %}{{ action }} Course — Admin{% endblock %}
+{% block content %}
+<div class="container" style="max-width:600px; margin-top:40px;">
+  <h4 class="fw-bold mb-4">{{ action }} Course</h4>
+  <div style="background:white; border-radius:20px; padding:32px; box-shadow:0 4px 20px rgba(0,0,0,.07);">
+    <form method="post" enctype="multipart/form-data">
+      {% csrf_token %}
+      {% for field in form %}
+      <div class="mb-3">
+        <label class="form-label fw-semibold" style="font-size:13px;">{{ field.label }}</label>
+        {{ field }}
+        {% if field.errors %}<div class="text-danger" style="font-size:12px;">{{ field.errors.0 }}</div>{% endif %}
+      </div>
+      {% endfor %}
+      <div class="d-flex gap-3">
+        <button type="submit" class="btn rounded-pill fw-bold px-4" style="background:linear-gradient(135deg,#5a67d8,#7b4bb7);color:white;">Save Course</button>
+        <a href="{% url 'admin_dashboard' %}" class="btn btn-outline-secondary rounded-pill px-4">Cancel</a>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
